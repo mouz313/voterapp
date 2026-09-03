@@ -3,31 +3,23 @@
 return [
 
     /*
-     * Path to the poppler `pdftotext` binary (used for digital/text PDFs).
-     * It is already available on this machine via Git's mingw bin.
+     * Path to the Tesseract OCR executable.
      */
-    'pdftotext_path' => env('PDFTOTEXT_PATH', 'pdftotext'),
+    'tesseract_path' => env('TESSERACT_PATH', 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'),
 
     /*
-     * Path to the Tesseract OCR binary (used only for scanned PDFs).
-     * Requires a one-time install + Urdu `urd.traineddata` in tessdata.
+     * Folder that CONTAINS the tessdata/ directory (i.e. tessdata_prefix/tessdata/urd.traineddata).
      */
-    'tesseract_path' => env('TESSERACT_PATH', 'tesseract'),
+    'tessdata_prefix' => env('TESSDATA_PREFIX', base_path('_tess')),
 
     /*
-     * Path to the Python interpreter (used to rasterize scanned PDFs to images).
+     * OCR language(s). Urdu requires urd.traineddata in the tessdata folder above.
      */
-    'python_path' => env('PYTHON_PATH', 'python'),
+    'languages' => env('TESSERACT_LANGS', 'urd+eng'),
 
     /*
-     * Enable OCR for scanned PDFs. Leave false until Tesseract + a PDF
-     * rasterizer (e.g. `pip install pymupdf`) are installed on the server.
+     * Page segmentation mode passed to Tesseract.
      */
-    'ocr_enabled' => env('PDF_OCR_ENABLED', false),
+    'psm' => env('TESSERACT_PSM', 6),
 
-    /*
-     * Temp directory (relative to storage_path) for uploaded PDFs and
-     * intermediate OCR images / parsed-row JSON.
-     */
-    'tmp_dir' => 'pdfimport',
 ];

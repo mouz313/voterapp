@@ -68,9 +68,14 @@
                         @error('silsala_no') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Gharana No</label>
+                        <label class="form-label">Gharana No (optional)</label>
                         <input type="text" name="gharana_no" value="{{ old('gharana_no', $voter->gharana_no) }}" class="form-control @error('gharana_no') is-invalid @enderror">
                         @error('gharana_no') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Address (optional)</label>
+                        <input type="text" name="address" value="{{ old('address', $voter->address) }}" class="form-control @error('address') is-invalid @enderror">
+                        @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
                 <button class="btn btn-primary mt-3"><i class="bi bi-save me-1"></i> Update</button>

@@ -73,7 +73,11 @@
                                         <div class="text-muted small">Block</div>
                                         <div class="fw-semibold">{{ $bc->code }}</div>
                                     </div>
-                                    <span class="badge bg-primary-subtle text-primary">{{ $bc->voters->count() }} voters</span>
+                                    @if ($bc->voters_count > 0)
+                                        <span class="badge bg-success-subtle text-success" title="Imported">{{ $bc->voters_count }} voters</span>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary" title="No data yet">pending</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>

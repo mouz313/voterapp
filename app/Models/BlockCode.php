@@ -11,7 +11,13 @@ class BlockCode extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['uc_id', 'code'];
+    protected $fillable = [
+        'uc_id',
+        'code',
+        'area_name',
+        'area_name_ur',
+        'population',
+    ];
 
     public function uc(): BelongsTo
     {

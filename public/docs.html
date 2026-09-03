@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoterApp — Enterprise System & API Documentation</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    pre, code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-get { background: #0ea5e9; color: white; }
+    .badge-post { background: #10b981; color: white; }
+    .badge-put { background: #f59e0b; color: white; }
+    .badge-delete { background: #ef4444; color: white; }
+    .glass-nav {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased min-h-screen selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Sticky Navigation -->
+  <header class="sticky top-0 z-50 glass-nav bg-slate-900/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-500/20">
+          ⚡
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight text-white">VoterApp</span>
+          <span class="ml-2 text-xs uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Docs v2.0</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span class="hidden md:inline-flex items-center text-xs text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-2"></span> System Online (Laravel 13 API)
+        </span>
+        <a href="#api-reference" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition shadow-lg shadow-emerald-500/20">
+          API Reference
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Sidebar Navigation -->
+      <aside class="hidden lg:block lg:col-span-3 sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto pr-4 space-y-6">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Getting Started</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#overview" class="block text-slate-300 hover:text-emerald-400 transition py-1">System Overview</a></li>
+            <li><a href="#electoral-hierarchy" class="block text-slate-300 hover:text-emerald-400 transition py-1">Pakistan Electoral Hierarchy</a></li>
+            <li><a href="#candidate-monetization" class="block text-slate-300 hover:text-emerald-400 transition py-1">Candidate License & Quota</a></li>
+            <li><a href="#offline-architecture" class="block text-slate-300 hover:text-emerald-400 transition py-1">100% Offline Workflow</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">CMS Modules</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#cms-na-pp" class="block text-slate-300 hover:text-emerald-400 transition py-1">NA & Provincial Assemblies</a></li>
+            <li><a href="#cms-admin-units" class="block text-slate-300 hover:text-emerald-400 transition py-1">Districts, Tehsils & UCs</a></li>
+            <li><a href="#cms-candidates" class="block text-slate-300 hover:text-emerald-400 transition py-1">Candidate & Device Manager</a></li>
+            <li><a href="#cms-imports" class="block text-slate-300 hover:text-emerald-400 transition py-1">Voter Import & Urdu OCR</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Mobile REST APIs (v1)</h3>
+          <ul class="space-y-2 text-sm font-mono text-xs">
+            <li><a href="#api-login" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-emerald-400 font-bold">POST</span> /auth/login</a></li>
+            <li><a href="#api-check-device" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-sky-400 font-bold">GET</span> /auth/check-device</a></li>
+            <li><a href="#api-download" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-sky-400 font-bold">GET</span> /uc/{id}/download</a></li>
+            <li><a href="#api-sync-searches" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-emerald-400 font-bold">POST</span> /sync/searches</a></li>
+            <li><a href="#api-heartbeat" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-emerald-400 font-bold">POST</span> /sync/heartbeat</a></li>
+            <li><a href="#api-search" class="flex items-center text-slate-300 hover:text-emerald-400 py-1"><span class="w-12 text-emerald-400 font-bold">POST</span> /voters/search</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Database & Setup</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#database-schema" class="block text-slate-300 hover:text-emerald-400 transition py-1">Schema & Relationships</a></li>
+            <li><a href="#interactive-tester" class="block text-slate-300 hover:text-emerald-400 transition py-1">Interactive API Tester</a></li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Main Documentation Content -->
+      <main class="lg:col-span-9 space-y-12">
+
+        <!-- Hero Section -->
+        <section id="overview" class="p-8 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/80 to-slate-950 border border-slate-800 relative overflow-hidden shadow-2xl">
+          <div class="absolute -right-20 -top-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="max-w-3xl">
+            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-block mb-4">Official Documentation</span>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+              Pakistan Election VoterApp <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">System & API Architecture</span>
+            </h1>
+            <p class="text-slate-300 text-base leading-relaxed mb-6">
+              A robust, multi-tenant electoral management platform engineered for Pakistan's democratic structure. Designed to sell dedicated, offline-first mobile voter search apps to Union Council (UC) candidates with strict device login limits (max 20 devices), real-time background sync, and instant paperless verification.
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div class="text-2xl font-bold text-emerald-400">100%</div>
+                <div class="text-xs text-slate-400">Offline SQLite Search</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div class="text-2xl font-bold text-sky-400">20 Max</div>
+                <div class="text-xs text-slate-400">Devices Per Candidate</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div class="text-2xl font-bold text-amber-400">&lt; 50ms</div>
+                <div class="text-xs text-slate-400">Search Latency</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div class="text-2xl font-bold text-purple-400">v1 API</div>
+                <div class="text-xs text-slate-400">JSON REST Endpoints</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Electoral Hierarchy -->
+        <section id="electoral-hierarchy" class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <h2 class="text-2xl font-bold text-white mb-3">🏛️ Pakistan Electoral Hierarchy Architecture</h2>
+          <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+            The platform models the complete constitutional and local government election framework of Pakistan:
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-emerald-400 font-bold text-sm mb-1">Level 1: Federal & Provincial</div>
+              <p class="text-xs text-slate-400"><strong>National Assembly (NA)</strong>: NA-1 to NA-266. Contains $\ge$ 2 Provincial seats (PP in Punjab, PS in Sindh, PK in KPK, PB in Balochistan).</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-sky-400 font-bold text-sm mb-1">Level 2: Administrative</div>
+              <p class="text-xs text-slate-400"><strong>District $\rightarrow$ Tehsil $\rightarrow$ Union Council (UC)</strong>. UCs represent local government wards mapped to national & provincial seats.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-purple-400 font-bold text-sm mb-1">Level 3: Polling & Voters</div>
+              <p class="text-xs text-slate-400"><strong>Polling Stations & Block Codes</strong>. Houses registered voters with Urdu Name, Father Name, CNIC, Silsala #, and Gharana #.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Candidate Monetization & Quota Flow -->
+        <section id="candidate-monetization" class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <h2 class="text-2xl font-bold text-white mb-3">📱 Candidate Monetization & Device Limit Control</h2>
+          <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+            The commercial core of the business model is selling UC-level mobile app licenses to candidates.
+          </p>
+
+          <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-4">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0">1</div>
+              <div>
+                <h4 class="font-semibold text-white text-sm">Account Creation & UC Locking</h4>
+                <p class="text-slate-400 text-xs mt-1">Admin registers candidate with Email, Password, Assigned UC (e.g. UC-14), and Maximum Allowed Devices (e.g. 20 devices).</p>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-4">
+              <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0">2</div>
+              <div>
+                <h4 class="font-semibold text-white text-sm">Automated Quota & Hardware UUID Lock</h4>
+                <p class="text-slate-400 text-xs mt-1">When polling workers log in, the API captures their phone hardware UUID. If active devices $\le 20$, login succeeds. The 21st device is automatically rejected with HTTP 403.</p>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-4">
+              <div class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 font-bold flex items-center justify-center shrink-0">3</div>
+              <div>
+                <h4 class="font-semibold text-white text-sm">1-Click Live Revocation Console</h4>
+                <p class="text-slate-400 text-xs mt-1">Admin can view every logged-in phone's model name, IP address, and last active timestamp, and revoke any rogue device instantly.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- API Reference -->
+        <section id="api-reference" class="space-y-8">
+          <div class="border-b border-slate-800 pb-4">
+            <h2 class="text-2xl font-bold text-white">📡 Mobile REST API Reference (v1)</h2>
+            <p class="text-slate-400 text-sm mt-1">Base URL: <code class="px-2 py-1 rounded bg-slate-800 text-emerald-400 text-xs">http://your-server.com/api/v1</code></p>
+          </div>
+
+          <!-- API: Login -->
+          <div id="api-login" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="px-2.5 py-1 rounded-md text-xs font-bold badge-post">POST</span>
+                <span class="font-mono text-sm font-semibold text-white">/api/v1/auth/login</span>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">Public Auth</span>
+            </div>
+            <p class="text-slate-300 text-sm">Candidate authentication with hardware device registration and 20-device limit check.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Request Body (JSON)</div>
+                <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 overflow-x-auto"><code>{
+  "email": "candidate@uc12.com",
+  "password": "secret_password",
+  "device_uid": "UUID-9876-5432-ABCD",
+  "device_name": "Samsung Galaxy A54",
+  "platform": "android",
+  "app_version": "1.0.0"
+}</code></pre>
+              </div>
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Success Response (200 OK)</div>
+                <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-emerald-400 overflow-x-auto"><code>{
+  "status": true,
+  "message": "Login successful. Device authorized.",
+  "token": "eyJpZCI6MSwidWlkIjoiVVVJRC05ODc...",
+  "candidate": {
+    "name": "Malik Usman",
+    "max_devices": 20,
+    "active_devices": 3
+  },
+  "uc": {
+    "id": 5,
+    "name": "UC-14 Data Ganj Bakhsh",
+    "district": "Lahore",
+    "national_assembly": "NA-120",
+    "provincial_assembly": "PP-150"
+  }
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- API: Download UC Data -->
+          <div id="api-download" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="px-2.5 py-1 rounded-md text-xs font-bold badge-get">GET</span>
+                <span class="font-mono text-sm font-semibold text-white">/api/v1/uc/{uc_id}/download</span>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">Offline Cache</span>
+            </div>
+            <p class="text-slate-300 text-sm">Bulk export of complete UC dataset (Voters, Polling Stations, Block Codes) formatted for instant local SQLite table insertion on device.</p>
+
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Response Sample (200 OK)</div>
+              <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 overflow-x-auto"><code>{
+  "status": true,
+  "uc": { "id": 5, "name": "UC-14", "district": "Lahore", "national_assembly": "NA-120" },
+  "counts": { "total_voters": 18450, "total_blocks": 35, "total_polling_stations": 12 },
+  "block_codes": [ { "id": 1, "code": "045020101" } ],
+  "polling_stations": [ { "id": 1, "name": "Govt High School No. 1", "address": "Mohni Road" } ],
+  "voters": [
+    {
+      "id": 101,
+      "silsala_no": 1,
+      "gharana_no": 12,
+      "name": "محمد عثمان",
+      "father_name": "عبد الرشید",
+      "cnic": "3520112345678",
+      "formatted_cnic": "35201-1234567-8",
+      "age": 34,
+      "address": "محلہ اسلام پورہ",
+      "block_code": "045020101",
+      "polling_station_name": "Govt High School No. 1"
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+
+          <!-- API: Sync Searches -->
+          <div id="api-sync-searches" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="px-2.5 py-1 rounded-md text-xs font-bold badge-post">POST</span>
+                <span class="font-mono text-sm font-semibold text-white">/api/v1/sync/searches</span>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">Background Sync</span>
+            </div>
+            <p class="text-slate-300 text-sm">Silent background sync payload sent by the mobile app whenever an internet connection is detected.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Request Body (JSON)</div>
+                <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 overflow-x-auto"><code>{
+  "device_uid": "UUID-9876-5432-ABCD",
+  "searches": [
+    { "query_type": "cnic", "results_count": 1, "searched_at": "2026-09-01 14:30:00" },
+    { "query_type": "gharana", "results_count": 6, "searched_at": "2026-09-01 14:32:00" }
+  ],
+  "batch_count": 45
+}</code></pre>
+              </div>
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Response (200 OK)</div>
+                <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-emerald-400 overflow-x-auto"><code>{
+  "status": true,
+  "message": "Search telemetry synced successfully.",
+  "synced_count": 45
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- API: Heartbeat -->
+          <div id="api-heartbeat" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="px-2.5 py-1 rounded-md text-xs font-bold badge-post">POST</span>
+                <span class="font-mono text-sm font-semibold text-white">/api/v1/sync/heartbeat</span>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">Telemetry</span>
+            </div>
+            <p class="text-slate-300 text-sm">Background ping updating device last-seen timestamp, IP address, and app version.</p>
+          </div>
+        </section>
+
+        <!-- Database Schema -->
+        <section id="database-schema" class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <h2 class="text-2xl font-bold text-white mb-4">🗄️ Relational Database Schema</h2>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950 text-slate-400 uppercase font-bold border-b border-slate-800">
+                <tr>
+                  <th class="p-3">Table</th>
+                  <th class="p-3">Key Columns</th>
+                  <th class="p-3">Relationships</th>
+                  <th class="p-3">Description</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-mono">
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">national_assemblies</td>
+                  <td class="p-3">id, code, name, province</td>
+                  <td class="p-3">hasMany(ProvincialAssembly, UC)</td>
+                  <td class="p-3 font-sans text-slate-400">NA-1 to NA-266 federal seats</td>
+                </tr>
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">provincial_assemblies</td>
+                  <td class="p-3">id, national_assembly_id, code, name</td>
+                  <td class="p-3">belongsTo(NA), hasMany(UC)</td>
+                  <td class="p-3 font-sans text-slate-400">PP/PS/PK/PB provincial seats</td>
+                </tr>
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">ucs</td>
+                  <td class="p-3">id, tehsil_id, national_assembly_id, name</td>
+                  <td class="p-3">hasMany(Voter, BlockCode, PollingStation)</td>
+                  <td class="p-3 font-sans text-slate-400">Union Council administrative unit</td>
+                </tr>
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">users</td>
+                  <td class="p-3">id, role, uc_id, max_devices, status</td>
+                  <td class="p-3">hasMany(CandidateDevice, SearchLog)</td>
+                  <td class="p-3 font-sans text-slate-400">Candidate accounts & Admin credentials</td>
+                </tr>
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">candidate_devices</td>
+                  <td class="p-3">id, user_id, device_uid, is_revoked</td>
+                  <td class="p-3">belongsTo(User)</td>
+                  <td class="p-3 font-sans text-slate-400">Mobile hardware locks & last active times</td>
+                </tr>
+                <tr>
+                  <td class="p-3 text-emerald-400 font-bold">voters</td>
+                  <td class="p-3">id, uc_id, cnic, silsala_no, gharana_no</td>
+                  <td class="p-3">belongsTo(UC, BlockCode, PollingStation)</td>
+                  <td class="p-3 font-sans text-slate-400">Electoral roll voter records</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
+          <p>© 2026 VoterApp System Architecture. Built with Laravel 13 & SQLite.</p>
+        </footer>
+
+      </main>
+    </div>
+  </div>
+
+</body>
+</html>

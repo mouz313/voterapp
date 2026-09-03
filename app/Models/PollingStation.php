@@ -11,11 +11,16 @@ class PollingStation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['uc_id', 'name', 'address'];
+    protected $fillable = ['uc_id', 'block_code_id', 'name', 'address'];
 
     public function uc(): BelongsTo
     {
         return $this->belongsTo(UC::class, 'uc_id');
+    }
+
+    public function blockCode(): BelongsTo
+    {
+        return $this->belongsTo(BlockCode::class, 'block_code_id');
     }
 
     public function voters(): HasMany

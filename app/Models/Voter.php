@@ -21,6 +21,7 @@ class Voter extends Model
         'cnic',
         'silsala_no',
         'gharana_no',
+        'address',
     ];
 
     public function uc(): BelongsTo

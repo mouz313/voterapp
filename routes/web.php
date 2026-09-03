@@ -1,13 +1,20 @@
 <?php
 
 use App\Http\Controllers\BlockCodesController;
+use App\Http\Controllers\CandidatesController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictsController;
+use App\Http\Controllers\NationalAssembliesController;
 use App\Http\Controllers\PdfImportController;
 use App\Http\Controllers\PollingStationsController;
+use App\Http\Controllers\ProvincialAssembliesController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TehsilsController;
 use App\Http\Controllers\UCsController;
 use App\Http\Controllers\VotersController;
+use App\Models\PollingStation;
+use App\Models\UC;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -96,27 +103,62 @@ Route::post('/reset-password', function (Request $request) {
 })->name('password.update');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard', ['user' => Auth::user()]);
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Constituencies / Assemblies Hierarchy
+    Route::resource('national-assemblies', NationalAssembliesController::class)->except(['show']);
+    Route::resource('provincial-assemblies', ProvincialAssembliesController::class)->except(['show']);
+
+    // Administrative Locations
     Route::resource('districts', DistrictsController::class)->except(['show']);
     Route::resource('tehsils', TehsilsController::class)->except(['show']);
     Route::resource('ucs', UCsController::class)->except(['show']);
     Route::get('/ucs/{uc}', [UCsController::class, 'show'])->name('ucs.show');
+    Route::get('/ucs/{uc}/block-codes', [UCsController::class, 'blockCodes'])->name('ucs.block-codes');
+    Route::get('/ucs/{uc}/polling-stations', fn (UC $uc) => PollingStation::where('uc_id', $uc->id)->orderBy('name')->get(['id', 'name']))->name('ucs.polling-stations');
+    Route::get('/block-codes/import', [BlockCodesController::class, 'importForm'])->name('block-codes.import.form');
+    Route::post('/block-codes/import', [BlockCodesController::class, 'import'])->name('block-codes.import');
     Route::resource('block-codes', BlockCodesController::class)->except(['show']);
     Route::resource('polling-stations', PollingStationsController::class)->except(['show']);
     Route::get('/polling-stations/import', [PollingStationsController::class, 'importForm'])->name('polling-stations.import.form');
     Route::post('/polling-stations/import', [PollingStationsController::class, 'import'])->name('polling-stations.import');
 
-    Route::resource('voters', VotersController::class)->except(['show']);
+    // Candidate Management & Device Tracking
+    Route::resource('candidates', CandidatesController::class)->except(['show']);
+    Route::get('/candidates/{candidate}/devices', [CandidatesController::class, 'devices'])->name('candidates.devices');
+    Route::post('/candidates/devices/{device}/toggle', [CandidatesController::class, 'toggleDeviceRevoke'])->name('candidates.devices.toggle');
+    Route::delete('/candidates/devices/{device}', [CandidatesController::class, 'destroyDevice'])->name('candidates.devices.destroy');
+
+    // Voters & Search
     Route::get('/voters/import', [VotersController::class, 'importForm'])->name('voters.import.form');
+    Route::get('/voters/import/preview', fn () => redirect()->route('voters.import.form'));
+    Route::post('/voters/import/preview', [VotersController::class, 'importPreview'])->name('voters.import.preview');
     Route::post('/voters/import', [VotersController::class, 'import'])->name('voters.import');
 
-    Route::get('/import/pdf', [PdfImportController::class, 'index'])->name('import.pdf.index');
-    Route::post('/import/pdf', [PdfImportController::class, 'store'])->name('import.pdf.store');
-    Route::get('/import/pdf/preview', [PdfImportController::class, 'preview'])->name('import.pdf.preview');
-    Route::post('/import/pdf/confirm', [PdfImportController::class, 'confirm'])->name('import.pdf.confirm');
+    Route::resource('voters', VotersController::class)->except(['show']);
+    Route::get('/voters/{voter}', [VotersController::class, 'show'])->name('voters.show');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+
+    Route::get('/import/image', [PdfImportController::class, 'importForm'])->name('import.image.form');
+    Route::post('/import/image', [PdfImportController::class, 'store'])->name('import.image.store');
+
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/purge/{type}', [SettingsController::class, 'purge'])->name('settings.purge');
+    Route::get('/settings/backup/download', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::get('/settings/backup/file/{filename}', [SettingsController::class, 'downloadBackupFile'])->name('settings.backup.file');
+    Route::delete('/settings/backup/file/{filename}', [SettingsController::class, 'deleteBackup'])->name('settings.backup.delete');
+
+    Route::get('/api-docs', [\App\Http\Controllers\ApiDocsController::class, 'index'])->name('api.docs');
+});
+
+// Direct /v1/* routes (supports requests with or without /api prefix)
+Route::prefix('v1')->group(function () {
+    Route::match(['GET', 'POST'], '/auth/login', [\App\Http\Controllers\Api\MobileApiController::class, 'login']);
+    Route::get('/auth/check-device', [\App\Http\Controllers\Api\MobileApiController::class, 'checkDevice']);
+    Route::get('/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
+    Route::get('/uc/{uc}/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
+    Route::post('/sync/searches', [\App\Http\Controllers\Api\MobileApiController::class, 'syncSearches']);
+    Route::post('/sync/heartbeat', [\App\Http\Controllers\Api\MobileApiController::class, 'heartbeat']);
+    Route::match(['GET', 'POST'], '/voters/search', [\App\Http\Controllers\Api\MobileApiController::class, 'searchVoters']);
 });

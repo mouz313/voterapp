@@ -3,97 +3,167 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 
+/**
+ * Extracts voter data from an uploaded image (photo of a voter list) using
+ * Tesseract OCR, then produces rows in the same layout as test.csv so the
+ * resulting CSV/Excel can be corrected in Excel and re-imported.
+ */
 class PdfExtractorService
 {
     /**
-     * Extract raw text from a PDF.
-     * Digital/text PDFs are handled with pdftotext (-layout). If that yields
-     * almost nothing and OCR is enabled, pages are rasterized and run through
-     * Tesseract (Urdu). Returns ['text' => string, 'scanned' => bool].
+     * Full header row (mirrors test.csv) so the exported file re-imports cleanly.
+     * Columns: سلسلہ نمبر، گھرانہ نمبر، نام، والد/پتی کا نام، قومی شناختی کارڈ نمبر، عمر، پتہ
+     *
+     * @var array<int, string>
      */
-    public function extractText(string $pdfPath): array
-    {
-        $text = $this->runPdfToText($pdfPath);
-        $scanned = mb_strlen(trim($text)) < 50;
-
-        if ($scanned && config('pdfimport.ocr_enabled')) {
-            $text = $this->runOcr($pdfPath);
-            $scanned = false;
-        }
-
-        return ['text' => $text, 'scanned' => $scanned];
-    }
+    public const HEADERS = [
+        'سلسلہ نمبر',
+        'گھرانہ نمبر',
+        'نام',
+        'والد / پتی کا نام',
+        'قومی شناختی کارڈ نمبر',
+        'عمر',
+        'پتہ',
+    ];
 
     /**
-     * Parse layout text into rows of cells. Columns are split on runs of two
-     * or more spaces (pdftotext -layout alignment). Good enough for the
-     * mapping UI; the user aligns columns explicitly.
+     * Run OCR on the image and return structured voter rows.
+     *
+     * @return array<int, array<string, string>>
      */
-    public function parseRows(string $text, int $maxRows = 200): array
+    public function extractVoters(string $imagePath): array
     {
-        $lines = preg_split('/\r\n|\n|\r/', $text);
-        $rows = [];
+        $text = $this->ocr($imagePath);
+        $lines = preg_split('/\r\n|\n|\r/u', $text) ?: [];
 
+        $rows = [];
+        $n = 0;
         foreach ($lines as $line) {
             $line = trim($line);
             if ($line === '') {
                 continue;
             }
-            $cells = array_map('trim', preg_split('/\s{2,}/u', $line));
-            $cells = array_values(array_filter($cells, fn ($c) => $c !== ''));
-            if (count($cells) < 2) {
-                continue;
+
+            $cnic = '';
+            if (preg_match('/\b(\d{5}-\d{7}-\d{1})\b/', $line, $m)) {
+                $cnic = $m[1];
+            } elseif (preg_match('/\b(\d{13})\b/', $line, $m)) {
+                $cnic = $m[1];
             }
-            $rows[] = $cells;
-            if (count($rows) >= $maxRows) {
-                break;
+
+            $age = '';
+            $rest = $line;
+            if (preg_match('/(\d+)\s*سال/u', $line, $m)) {
+                $age = $m[1];
+                $rest = trim(str_replace($m[0], '', $line));
             }
+
+            $n++;
+            $rows[] = [
+                'silsala_no' => (string) $n,
+                'gharana_no' => '',
+                'name' => '',
+                'father_name' => '',
+                'cnic' => $cnic,
+                'age' => $age,
+                'address' => $rest,
+            ];
         }
 
         return $rows;
     }
 
-    protected function runPdfToText(string $pdfPath): string
+    /**
+     * Run Tesseract OCR on a (preprocessed) image and return plain text.
+     */
+    protected function ocr(string $imagePath): string
     {
-        $bin = config('pdfimport.pdftotext_path');
-        // -table keeps column gaps (multi-word names stay intact), unlike -layout.
-        $cmd = escapeshellarg($bin) . ' -table -enc UTF-8 ' . escapeshellarg($pdfPath) . ' -';
-        $output = @shell_exec($cmd);
+        $pre = $this->preprocess($imagePath);
 
-        if ($output === null) {
+        $prefix = config('pdfimport.tessdata_prefix');
+        if ($prefix) {
+            putenv('TESSDATA_PREFIX='.$prefix);
+        }
+
+        $out = tempnam(sys_get_temp_dir(), 'ocr_');
+        if ($out === false) {
             return '';
         }
 
-        // Drop form-feed / null bytes that poppler inserts between pages.
-        return str_replace(["\f", "\0"], '', $output);
+        $cmd = sprintf(
+            '"%s" "%s" "%s" -l %s --psm %d 2>NUL',
+            config('pdfimport.tesseract_path'),
+            $pre,
+            $out,
+            config('pdfimport.languages'),
+            (int) config('pdfimport.psm')
+        );
+
+        shell_exec($cmd);
+
+        $txt = @file_get_contents($out.'.txt') ?: '';
+
+        @unlink($out);
+        @unlink($out.'.txt');
+        if ($pre !== $imagePath) {
+            @unlink($pre);
+        }
+
+        return $txt;
     }
 
-    protected function runOcr(string $pdfPath): string
+    /**
+     * GD preprocessing: upscale, grayscale, contrast. Returns a temp PNG path.
+     */
+    protected function preprocess(string $imagePath): string
     {
-        $tmp = Storage::disk('local')->path(config('pdfimport.tmp_dir') . '/ocr_' . uniqid());
-        File::ensureDirectoryExists($tmp);
-
-        $script = storage_path('scripts/rasterize.py');
-        $py = config('pdfimport.python_path');
-        $rasterCmd = escapeshellarg($py) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($pdfPath) . ' ' . escapeshellarg($tmp);
-        exec($rasterCmd, $out, $code);
-
-        if ($code !== 0) {
-            return '';
+        if (! extension_loaded('gd')) {
+            return $imagePath;
         }
 
-        $tesseract = config('pdfimport.tesseract_path');
-        $text = '';
-        foreach (File::glob($tmp . '/*.png') as $png) {
-            $tCmd = escapeshellarg($tesseract) . ' ' . escapeshellarg($png) . ' stdout -l urd';
-            $page = @shell_exec($tCmd);
-            if ($page !== null) {
-                $text .= $page . "\n";
-            }
+        $info = @getimagesize($imagePath);
+        if ($info === false) {
+            return $imagePath;
         }
 
-        return $text;
+        $src = $this->loadImage($imagePath, $info[2]);
+        if ($src === false) {
+            return $imagePath;
+        }
+
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $scale = min(3, 4000 / max($w, $h));
+        $nw = max(1, (int) ($w * $scale));
+        $nh = max(1, (int) ($h * $scale));
+
+        $img = imagecreatetruecolor($nw, $nh);
+        imagecopyresampled($img, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagefilter($img, IMG_FILTER_GRAYSCALE);
+        imagefilter($img, IMG_FILTER_CONTRAST, -25);
+        imagefilter($img, IMG_FILTER_BRIGHTNESS, 10);
+
+        $out = tempnam(sys_get_temp_dir(), 'pre_').'.png';
+        imagepng($img, $out);
+
+        imagedestroy($src);
+        imagedestroy($img);
+
+        return $out;
+    }
+
+    /**
+     * @param  int  $type  One of the IMAGETYPE_* constants.
+     * @return \GdImage|false
+     */
+    protected function loadImage(string $path, int $type)
+    {
+        return match ($type) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
+            IMAGETYPE_PNG => @imagecreatefrompng($path),
+            IMAGETYPE_GIF => @imagecreatefromgif($path),
+            default => false,
+        };
     }
 }

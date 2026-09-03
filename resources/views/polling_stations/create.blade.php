@@ -25,6 +25,16 @@
                     @error('uc_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="mb-3">
+                    <label class="form-label">Block Code (optional)</label>
+                    <select name="block_code_id" id="blockCodeSelect" class="form-select @error('block_code_id') is-invalid @enderror">
+                        <option value="">Select Block Code</option>
+                        @foreach ($blockCodes as $bc)
+                            <option value="{{ $bc->id }}" {{ (old('block_code_id') == $bc->id) ? 'selected' : '' }}>{{ $bc->code }}</option>
+                        @endforeach
+                    </select>
+                    @error('block_code_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Station Name</label>
                     <input type="text" name="name" value="{{ old('name') }}" class="form-control @error('name') is-invalid @enderror" required>
                     @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -38,4 +48,34 @@
             </form>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            (function () {
+                const ucSelect = document.querySelector('select[name="uc_id"]');
+                const blockSelect = document.getElementById('blockCodeSelect');
+                if (!ucSelect || !blockSelect) return;
+
+                function loadBlockCodes(ucId, selectedId) {
+                    blockSelect.innerHTML = '<option value="">Select Block Code</option>';
+                    if (!ucId) return;
+                    fetch(`/ucs/${ucId}/block-codes`)
+                        .then(r => r.json())
+                        .then(list => {
+                            list.forEach(bc => {
+                                const opt = document.createElement('option');
+                                opt.value = bc.id;
+                                opt.textContent = bc.code;
+                                if (selectedId && Number(bc.id) === Number(selectedId)) opt.selected = true;
+                                blockSelect.appendChild(opt);
+                            });
+                        })
+                        .catch(() => {});
+                }
+
+                ucSelect.addEventListener('change', () => loadBlockCodes(ucSelect.value, null));
+                if (ucSelect.value) loadBlockCodes(ucSelect.value, '{{ old('block_code_id') }}');
+            })();
+        </script>
+    @endpush
 @endsection
