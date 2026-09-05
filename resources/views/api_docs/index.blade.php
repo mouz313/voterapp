@@ -260,16 +260,16 @@
                                 </thead>
                                 <tbody>
                                     <tr>
+                                        <td><code>Authorization</code></td>
+                                        <td>Header</td>
+                                        <td><span class="badge bg-danger-subtle text-danger">Required</span></td>
+                                        <td><code>Bearer &lt;token&gt;</code> received from <code>/auth/login</code></td>
+                                    </tr>
+                                    <tr>
                                         <td><code>uc_id</code></td>
                                         <td>integer</td>
                                         <td><span class="badge bg-secondary-subtle text-dark">Optional</span></td>
-                                        <td>Specific UC ID (defaults to candidate's assigned UC)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>Authorization</code></td>
-                                        <td>Header</td>
-                                        <td><span class="badge bg-success-subtle text-success">Header</span></td>
-                                        <td><code>Bearer &lt;token&gt;</code></td>
+                                        <td>Must match candidate's assigned UC (Cross-UC access returns <code>403 Forbidden</code>)</td>
                                     </tr>
                                 </tbody>
                             </table>

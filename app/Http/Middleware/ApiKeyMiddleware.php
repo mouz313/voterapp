@@ -9,12 +9,19 @@ use Symfony\Component\HttpFoundation\Response;
 class ApiKeyMiddleware
 {
     /**
-     * Validate the shared mobile API key (Bearer token or api_key query param).
+     * Validate the shared mobile API key if provided.
+     * Does not intercept candidate session tokens in the Authorization: Bearer header.
      */
     public function handle(Request $request, Closure $next): Response
     {
         // Never block login and public auth check endpoints
         if ($request->is('*/auth/login') || $request->is('v1/auth/login') || $request->is('api/v1/auth/login')) {
+            return $next($request);
+        }
+
+        // Allow candidate device session tokens (vp_*) to pass directly to CandidateAuthMiddleware
+        $bearer = $request->bearerToken();
+        if ($bearer && str_starts_with($bearer, 'vp_')) {
             return $next($request);
         }
 
@@ -25,9 +32,9 @@ class ApiKeyMiddleware
             return $next($request);
         }
 
-        $provided = $request->bearerToken() ?? $request->query('api_key') ?? $request->header('X-API-KEY');
+        $provided = $request->header('X-API-KEY') ?? $request->query('api_key') ?? $bearer;
 
-        if ($provided === null || !hash_equals($expected, (string) $provided)) {
+        if ($provided !== null && !hash_equals($expected, (string) $provided)) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized: Invalid or missing API key.',

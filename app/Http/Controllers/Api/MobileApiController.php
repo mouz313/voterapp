@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Validator;
 class MobileApiController extends Controller
 {
     /**
-     * Mobile App Candidate Login & Device Quota Enforcement.
-     * Enforces the max_devices limit (e.g. max 20 devices per candidate).
+     * Mobile App Candidate Login & Verifiable Device Session Authorization.
+     * Generates a unique server-verified API session token bound to this device.
      */
     public function login(Request $request): JsonResponse
     {
@@ -30,7 +30,7 @@ class MobileApiController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'VoterApp Mobile Authentication API Endpoint.',
-                'usage' => 'Send a POST request (or query params for browser testing) with email, password, and device_uid.',
+                'usage' => 'Send a POST request (or query params for testing) with email, password, and device_uid to authenticate.',
                 'endpoints' => [
                     'POST /api/v1/auth/login',
                     'POST /v1/auth/login',
@@ -90,10 +90,17 @@ class MobileApiController extends Controller
             ], 403);
         }
 
-        if ($user->expires_at && Carbon::now()->greaterThan($user->expires_at)) {
+        if ($user->role === 'candidate' && $user->expires_at && $user->expires_at->isPast()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Your election app subscription has expired. Please contact the administrator.',
+                'message' => 'This candidate account subscription expired on ' . $user->expires_at->format('Y-m-d') . '. Access restricted.',
+            ], 403);
+        }
+
+        if ($user->role === 'candidate' && !$user->uc_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No Union Council (UC) has been assigned to this candidate account yet. Please contact the administrator.',
             ], 403);
         }
 
@@ -107,11 +114,11 @@ class MobileApiController extends Controller
         if ($device && $device->is_revoked) {
             return response()->json([
                 'status' => false,
+                'is_revoked' => true,
                 'message' => 'This device access has been revoked/blocked by the administrator.',
             ], 403);
         }
 
-        // Unlimited devices permitted (Free to use)
         if (!$device) {
             $device = new CandidateDevice([
                 'user_id' => $user->id,
@@ -119,7 +126,11 @@ class MobileApiController extends Controller
             ]);
         }
 
-        // Update device telemetry
+        // Generate cryptographically secure verifiable session token
+        $token = 'vp_' . bin2hex(random_bytes(32));
+
+        // Update device telemetry and token
+        $device->api_token = $token;
         $device->device_name = $request->device_name ?: ($device->device_name ?: 'Mobile Device');
         $device->platform = $request->platform ?: ($device->platform ?: 'android');
         $device->app_version = $request->app_version ?: ($device->app_version ?: '1.0.0');
@@ -127,9 +138,6 @@ class MobileApiController extends Controller
         $device->last_active_at = Carbon::now();
         $device->is_revoked = false;
         $device->save();
-
-        // Generate signature auth token
-        $token = base64_encode($user->id . ':' . $deviceUid . ':' . time() . ':' . sha1($user->password . config('app.key')));
 
         $activeDevicesCount = CandidateDevice::where('user_id', $user->id)->where('is_revoked', false)->count();
 
@@ -180,20 +188,14 @@ class MobileApiController extends Controller
      */
     public function checkDevice(Request $request): JsonResponse
     {
-        $deviceUid = $request->header('X-Device-UID') ?? $request->query('device_uid');
-        $email = $request->header('X-Candidate-Email') ?? $request->query('email');
+        $device = $request->attributes->get('candidate_device');
 
-        if (!$deviceUid) {
-            return response()->json(['status' => false, 'message' => 'Device UID required.'], 400);
+        if (!$device) {
+            $deviceUid = $request->header('X-Device-UID') ?? $request->query('device_uid');
+            if ($deviceUid) {
+                $device = CandidateDevice::with('user.uc')->where('device_uid', $deviceUid)->first();
+            }
         }
-
-        $deviceQuery = CandidateDevice::with('user')->where('device_uid', $deviceUid);
-
-        if ($email) {
-            $deviceQuery->whereHas('user', fn ($q) => $q->where('email', $email));
-        }
-
-        $device = $deviceQuery->first();
 
         if (!$device) {
             return response()->json(['status' => false, 'message' => 'Device not registered.'], 404);
@@ -232,57 +234,70 @@ class MobileApiController extends Controller
 
     /**
      * Download complete UC data payload for 100% Offline SQLite database cache.
+     * Strictly scopes data download to the authenticated candidate's assigned UC.
      */
     public function downloadUcData(Request $request, ?UC $uc = null): JsonResponse
     {
-        // If UC is not passed in URL, attempt to determine from candidate email or query
-        if (!$uc || !$uc->exists) {
-            $ucId = $request->query('uc_id');
-            if ($ucId) {
-                $uc = UC::find($ucId);
-            }
-        }
+        $candidate = $request->user();
 
-        if (!$uc) {
+        if (!$candidate || !$candidate->uc_id) {
             return response()->json([
                 'status' => false,
-                'message' => 'Union Council (UC) not specified or not found.',
+                'message' => 'Forbidden: No Union Council (UC) is assigned to this candidate account.',
+            ], 403);
+        }
+
+        $assignedUcId = (int) $candidate->uc_id;
+
+        // Security check: If client passes a UC ID in the URL or query string, verify it matches assigned UC
+        $requestedUcId = $uc?->id ?? $request->query('uc_id');
+        if ($requestedUcId && (int) $requestedUcId !== $assignedUcId) {
+            return response()->json([
+                'status' => false,
+                'message' => "Forbidden: You are only authorized to access your assigned Union Council (UC ID: {$assignedUcId}). Cross-UC access is strictly denied.",
+            ], 403);
+        }
+
+        $targetUc = UC::with(['tehsil.district', 'nationalAssembly', 'provincialAssembly'])->find($assignedUcId);
+
+        if (!$targetUc) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Assigned Union Council not found in database.',
             ], 404);
         }
 
-        $uc->load(['tehsil.district', 'nationalAssembly', 'provincialAssembly']);
+        $brandingPayload = [
+            'candidate_name' => $candidate->name,
+            'party_name' => $candidate->party_name ?: ($candidate->is_independent ? 'Independent / Azad' : null),
+            'is_independent' => (bool) $candidate->is_independent,
+            'candidate_symbol' => $candidate->candidate_symbol,
+            'party_logo_url' => $candidate->party_logo_url,
+            'candidate_image_url' => $candidate->candidate_image_url,
+            'candidate_symbol_image_url' => $candidate->candidate_symbol_image_url,
+        ];
 
-        // Resolve Candidate for branding payload if email or user_id provided
-        $candidateUser = null;
-        if ($request->query('email') || $request->header('X-Candidate-Email')) {
-            $cEmail = $request->query('email') ?? $request->header('X-Candidate-Email');
-            $candidateUser = User::where('email', $cEmail)->first();
-        } elseif ($request->query('user_id')) {
-            $candidateUser = User::find($request->query('user_id'));
-        }
-
-        $brandingPayload = $candidateUser ? [
-            'candidate_name' => $candidateUser->name,
-            'party_name' => $candidateUser->party_name ?: ($candidateUser->is_independent ? 'Independent / Azad' : null),
-            'is_independent' => (bool) $candidateUser->is_independent,
-            'candidate_symbol' => $candidateUser->candidate_symbol,
-            'party_logo_url' => $candidateUser->party_logo_url,
-            'candidate_image_url' => $candidateUser->candidate_image_url,
-            'candidate_symbol_image_url' => $candidateUser->candidate_symbol_image_url,
-        ] : null;
-
-        // Fetch Block Codes with Delimitation fields
-        $blockCodes = BlockCode::where('uc_id', $uc->id)
+        // Fetch Block Codes strictly for this candidate's UC
+        $blockCodes = BlockCode::where('uc_id', $targetUc->id)
             ->orderBy('code')
             ->get(['id', 'code', 'area_name', 'area_name_ur', 'population']);
 
-        // Fetch Polling Stations
-        $pollingStations = PollingStation::where('uc_id', $uc->id)
+        // Fetch Polling Stations strictly for this candidate's UC
+        $pollingStations = PollingStation::where('uc_id', $targetUc->id)
+            ->withCount('voters')
             ->orderBy('name')
-            ->get(['id', 'block_code_id', 'name', 'address', 'total_voters', 'male_voters', 'female_voters']);
+            ->get(['id', 'block_code_id', 'name', 'address']);
 
-        // Fetch all Voters for this UC
-        $voters = Voter::where('uc_id', $uc->id)
+        $pollingStationsPayload = $pollingStations->map(fn ($ps) => [
+            'id' => $ps->id,
+            'block_code_id' => $ps->block_code_id,
+            'name' => $ps->name,
+            'address' => $ps->address,
+            'total_voters' => $ps->voters_count ?? 0,
+        ]);
+
+        // Fetch all Voters strictly for this candidate's UC
+        $voters = Voter::where('uc_id', $targetUc->id)
             ->with(['blockCode:id,code,area_name,area_name_ur', 'pollingStation:id,name'])
             ->orderBy('gharana_no')
             ->orderBy('silsala_no')
@@ -297,6 +312,7 @@ class MobileApiController extends Controller
             'cnic' => $v->cnic,
             'formatted_cnic' => $v->formatted_cnic,
             'age' => $v->age,
+            'gender' => $v->gender,
             'address' => $v->address,
             'block_code_id' => $v->block_code_id,
             'block_code' => $v->blockCode?->code,
@@ -310,14 +326,14 @@ class MobileApiController extends Controller
             'status' => true,
             'message' => 'UC Dataset downloaded successfully.',
             'uc' => [
-                'id' => $uc->id,
-                'uc_no' => $uc->uc_no,
-                'name' => $uc->name,
-                'name_ur' => $uc->name_ur,
-                'tehsil' => $uc->tehsil?->name,
-                'district' => $uc->tehsil?->district?->name,
-                'national_assembly' => $uc->nationalAssembly?->code,
-                'provincial_assembly' => $uc->provincialAssembly?->code,
+                'id' => $targetUc->id,
+                'uc_no' => $targetUc->uc_no,
+                'name' => $targetUc->name,
+                'name_ur' => $targetUc->name_ur,
+                'tehsil' => $targetUc->tehsil?->name,
+                'district' => $targetUc->tehsil?->district?->name,
+                'national_assembly' => $targetUc->nationalAssembly?->code,
+                'provincial_assembly' => $targetUc->provincialAssembly?->code,
             ],
             'branding' => $brandingPayload,
             'counts' => [
@@ -326,7 +342,7 @@ class MobileApiController extends Controller
                 'total_polling_stations' => $pollingStations->count(),
             ],
             'block_codes' => $blockCodes,
-            'polling_stations' => $pollingStations,
+            'polling_stations' => $pollingStationsPayload,
             'voters' => $votersPayload,
             'generated_at' => Carbon::now()->toIso8601String(),
         ]);
@@ -334,13 +350,11 @@ class MobileApiController extends Controller
 
     /**
      * Silent Background Sync for Search Analytics.
+     * Enforces authenticated candidate user, assigned UC, and device.
      */
     public function syncSearches(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'device_uid' => 'required|string',
-            'user_id' => 'nullable|exists:users,id',
-            'uc_id' => 'nullable|exists:ucs,id',
             'searches' => 'nullable|array',
             'searches.*.query_type' => 'nullable|string|in:cnic,name,gharana,silsala,general',
             'searches.*.results_count' => 'nullable|integer|min:0',
@@ -356,11 +370,12 @@ class MobileApiController extends Controller
             ], 422);
         }
 
-        $deviceUid = $request->device_uid;
-        $device = CandidateDevice::where('device_uid', $deviceUid)->first();
+        $candidate = $request->user();
+        $device = $request->attributes->get('candidate_device');
 
-        $userId = $request->user_id ?: ($device?->user_id);
-        $ucId = $request->uc_id ?: ($device?->user?->uc_id);
+        $userId = $candidate->id;
+        $ucId = $candidate->uc_id;
+        $deviceUid = $device ? $device->device_uid : ($request->input('device_uid') ?? 'unknown');
 
         $syncedCount = 0;
 
@@ -381,7 +396,6 @@ class MobileApiController extends Controller
             }
             SearchLog::insert($records);
         } elseif ($request->batch_count) {
-            // Aggregate batch count summary
             SearchLog::create([
                 'user_id' => $userId,
                 'uc_id' => $ucId,
@@ -391,11 +405,6 @@ class MobileApiController extends Controller
                 'searched_at' => Carbon::now(),
             ]);
             $syncedCount = (int) $request->batch_count;
-        }
-
-        if ($device) {
-            $device->last_active_at = Carbon::now();
-            $device->save();
         }
 
         return response()->json([
@@ -410,29 +419,15 @@ class MobileApiController extends Controller
      */
     public function heartbeat(Request $request): JsonResponse
     {
-        $deviceUid = $request->input('device_uid') ?? $request->header('X-Device-UID');
-
-        if (!$deviceUid) {
-            return response()->json(['status' => false, 'message' => 'Device UID required.'], 400);
-        }
-
-        $device = CandidateDevice::where('device_uid', $deviceUid)->first();
+        $device = $request->attributes->get('candidate_device');
 
         if ($device) {
             $device->last_active_at = Carbon::now();
             $device->ip_address = $request->ip();
-            if ($request->app_version) {
-                $device->app_version = $request->app_version;
+            if ($request->input('app_version')) {
+                $device->app_version = $request->input('app_version');
             }
             $device->save();
-
-            if ($device->is_revoked) {
-                return response()->json([
-                    'status' => false,
-                    'is_revoked' => true,
-                    'message' => 'Device has been revoked.',
-                ], 403);
-            }
         }
 
         return response()->json([
@@ -443,13 +438,32 @@ class MobileApiController extends Controller
     }
 
     /**
-     * Online Live Voter Search Fallback (with family matching).
+     * Online Live Voter Search Fallback.
+     * Strictly scopes search to the authenticated candidate's assigned UC.
      */
     public function searchVoters(Request $request): JsonResponse
     {
+        $candidate = $request->user();
+
+        if (!$candidate || !$candidate->uc_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden: No Union Council (UC) is assigned to this candidate account.',
+            ], 403);
+        }
+
+        $assignedUcId = (int) $candidate->uc_id;
+
+        // Security check: Reject cross-UC queries
+        if ($request->filled('uc_id') && (int) $request->input('uc_id') !== $assignedUcId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden: You are only authorized to search voters within your assigned Union Council.',
+            ], 403);
+        }
+
         $query = trim((string) $request->input('q', ''));
-        $by = $request->input('by', 'all'); // 'all', 'cnic', 'name', 'gharana', 'silsala'
-        $ucId = $request->input('uc_id');
+        $by = $request->input('by', 'all');
 
         if ($query === '') {
             return response()->json([
@@ -459,11 +473,8 @@ class MobileApiController extends Controller
             ], 422);
         }
 
-        $voterQuery = Voter::with(['uc.tehsil.district', 'blockCode', 'pollingStation']);
-
-        if ($ucId) {
-            $voterQuery->where('uc_id', $ucId);
-        }
+        $voterQuery = Voter::with(['uc.tehsil.district', 'blockCode', 'pollingStation'])
+            ->where('uc_id', $assignedUcId);
 
         if ($by === 'cnic' || (preg_match('/^\d{5}/', $query) && strlen(preg_replace('/\D/', '', $query)) >= 5)) {
             $cleanCnic = Voter::normalizeCnic($query);
@@ -473,7 +484,6 @@ class MobileApiController extends Controller
         } elseif ($by === 'silsala') {
             $voterQuery->where('silsala_no', $query);
         } else {
-            // General multi-field search
             $cleanCnic = Voter::normalizeCnic($query);
             $voterQuery->where(function ($sub) use ($query, $cleanCnic) {
                 if ($cleanCnic !== '') {
@@ -495,12 +505,19 @@ class MobileApiController extends Controller
     }
 
     // -------------------------------------------------------------
-    // Legacy Endpoints Compatibility
+    // Legacy Endpoints Compatibility (Secured with Candidate Auth)
     // -------------------------------------------------------------
 
-    public function ucs(): JsonResponse
+    public function ucs(Request $request): JsonResponse
     {
-        $ucs = UC::with(['tehsil.district', 'nationalAssembly', 'provincialAssembly'])->orderBy('name')->get();
+        $candidate = $request->user();
+        $query = UC::with(['tehsil.district', 'nationalAssembly', 'provincialAssembly']);
+
+        if ($candidate && $candidate->uc_id) {
+            $query->where('id', $candidate->uc_id);
+        }
+
+        $ucs = $query->orderBy('name')->get();
 
         return response()->json(
             $ucs->map(fn ($u) => [
@@ -516,6 +533,15 @@ class MobileApiController extends Controller
 
     public function voters(Request $request, UC $uc)
     {
+        $candidate = $request->user();
+
+        if ($candidate && $candidate->uc_id && (int) $uc->id !== (int) $candidate->uc_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden: You are only authorized to access voters for your assigned Union Council.',
+            ], 403);
+        }
+
         $by = $request->query('by');
         $q = trim((string) $request->query('q', ''));
         $with = ['uc.tehsil.district', 'blockCode', 'pollingStation'];
@@ -536,15 +562,33 @@ class MobileApiController extends Controller
         return VoterResource::collection($voters);
     }
 
-    public function blockCodes(UC $uc): JsonResponse
+    public function blockCodes(Request $request, UC $uc): JsonResponse
     {
+        $candidate = $request->user();
+
+        if ($candidate && $candidate->uc_id && (int) $uc->id !== (int) $candidate->uc_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden: Cross-UC access denied.',
+            ], 403);
+        }
+
         return response()->json(
             BlockCode::where('uc_id', $uc->id)->orderBy('code')->get(['id', 'code'])
         );
     }
 
-    public function pollingStations(UC $uc): JsonResponse
+    public function pollingStations(Request $request, UC $uc): JsonResponse
     {
+        $candidate = $request->user();
+
+        if ($candidate && $candidate->uc_id && (int) $uc->id !== (int) $candidate->uc_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Forbidden: Cross-UC access denied.',
+            ], 403);
+        }
+
         return response()->json(
             PollingStation::where('uc_id', $uc->id)->orderBy('name')->get(['id', 'name', 'address'])
         );

@@ -13,12 +13,17 @@ class CandidateDevice extends Model
     protected $fillable = [
         'user_id',
         'device_uid',
+        'api_token',
         'device_name',
         'platform',
         'app_version',
         'ip_address',
         'last_active_at',
         'is_revoked',
+    ];
+
+    protected $hidden = [
+        'api_token',
     ];
 
     protected function casts(): array

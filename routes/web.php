@@ -39,6 +39,17 @@ Route::post('/login', function (Request $request) {
     if (Auth::attempt($credentials, $request->boolean('remember'))) {
         $request->session()->regenerate();
 
+        // Candidate accounts cannot access web admin console
+        if (Auth::user()->isCandidate()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'Candidate accounts cannot access the Web Admin Console. Please use the mobile application.']);
+        }
+
         return redirect()->intended('/dashboard');
     }
 
@@ -102,7 +113,7 @@ Route::post('/reset-password', function (Request $request) {
         : back()->withInput($request->only('email'))->withErrors(['email' => [__($status)]]);
 })->name('password.update');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Constituencies / Assemblies Hierarchy
@@ -155,10 +166,13 @@ Route::middleware('auth')->group(function () {
 // Direct /v1/* routes (supports requests with or without /api prefix)
 Route::prefix('v1')->group(function () {
     Route::match(['GET', 'POST'], '/auth/login', [\App\Http\Controllers\Api\MobileApiController::class, 'login']);
-    Route::get('/auth/check-device', [\App\Http\Controllers\Api\MobileApiController::class, 'checkDevice']);
-    Route::get('/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
-    Route::get('/uc/{uc}/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
-    Route::post('/sync/searches', [\App\Http\Controllers\Api\MobileApiController::class, 'syncSearches']);
-    Route::post('/sync/heartbeat', [\App\Http\Controllers\Api\MobileApiController::class, 'heartbeat']);
-    Route::match(['GET', 'POST'], '/voters/search', [\App\Http\Controllers\Api\MobileApiController::class, 'searchVoters']);
+
+    Route::middleware([\App\Http\Middleware\CandidateAuthMiddleware::class])->group(function () {
+        Route::get('/auth/check-device', [\App\Http\Controllers\Api\MobileApiController::class, 'checkDevice']);
+        Route::get('/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
+        Route::get('/uc/{uc}/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);
+        Route::post('/sync/searches', [\App\Http\Controllers\Api\MobileApiController::class, 'syncSearches']);
+        Route::post('/sync/heartbeat', [\App\Http\Controllers\Api\MobileApiController::class, 'heartbeat']);
+        Route::match(['GET', 'POST'], '/voters/search', [\App\Http\Controllers\Api\MobileApiController::class, 'searchVoters']);
+    });
 });
