@@ -285,20 +285,27 @@ class MobileApiController extends Controller
         // Fetch Polling Stations strictly for this candidate's UC
         $pollingStations = PollingStation::where('uc_id', $targetUc->id)
             ->withCount('voters')
+            ->orderByRaw('CAST(station_no AS UNSIGNED) ASC')
             ->orderBy('name')
-            ->get(['id', 'block_code_id', 'name', 'address']);
+            ->get(['id', 'block_code_id', 'station_no', 'name', 'gender', 'address', 'male_booths', 'female_booths', 'total_booths']);
 
         $pollingStationsPayload = $pollingStations->map(fn ($ps) => [
             'id' => $ps->id,
+            'station_no' => $ps->station_no,
             'block_code_id' => $ps->block_code_id,
             'name' => $ps->name,
+            'gender' => $ps->gender,
+            'gender_ur' => $ps->gender_label_ur,
             'address' => $ps->address,
+            'male_booths' => $ps->male_booths,
+            'female_booths' => $ps->female_booths,
+            'total_booths' => $ps->total_booths,
             'total_voters' => $ps->voters_count ?? 0,
         ]);
 
         // Fetch all Voters strictly for this candidate's UC
         $voters = Voter::where('uc_id', $targetUc->id)
-            ->with(['blockCode:id,code,area_name,area_name_ur', 'pollingStation:id,name'])
+            ->with(['blockCode:id,code,area_name,area_name_ur', 'pollingStation:id,station_no,name,gender,address'])
             ->orderBy('gharana_no')
             ->orderBy('silsala_no')
             ->get();
@@ -313,6 +320,7 @@ class MobileApiController extends Controller
             'formatted_cnic' => $v->formatted_cnic,
             'age' => $v->age,
             'gender' => $v->gender,
+            'gender_ur' => $v->gender_label_ur,
             'address' => $v->address,
             'block_code_id' => $v->block_code_id,
             'block_code' => $v->blockCode?->code,
@@ -320,6 +328,8 @@ class MobileApiController extends Controller
             'area_name_ur' => $v->blockCode?->area_name_ur,
             'polling_station_id' => $v->polling_station_id,
             'polling_station_name' => $v->pollingStation?->name,
+            'polling_station_gender' => $v->pollingStation?->gender,
+            'polling_station_no' => $v->pollingStation?->station_no,
         ]);
 
         return response()->json([
@@ -377,40 +387,67 @@ class MobileApiController extends Controller
         $ucId = $candidate->uc_id;
         $deviceUid = $device ? $device->device_uid : ($request->input('device_uid') ?? 'unknown');
 
-        $syncedCount = 0;
+        $additionalCount = 0;
+        $cnicAdd = 0;
+        $nameAdd = 0;
+        $gharanaAdd = 0;
+        $silsalaAdd = 0;
+        $lastQueryType = 'general';
 
         if ($request->has('searches') && is_array($request->searches) && count($request->searches) > 0) {
-            $records = [];
             foreach ($request->searches as $item) {
-                $records[] = [
-                    'user_id' => $userId,
-                    'uc_id' => $ucId,
-                    'device_uid' => $deviceUid,
-                    'query_type' => $item['query_type'] ?? 'cnic',
-                    'results_count' => $item['results_count'] ?? 1,
-                    'searched_at' => isset($item['searched_at']) ? Carbon::parse($item['searched_at']) : Carbon::now(),
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
-                $syncedCount++;
+                $qType = strtolower(trim($item['query_type'] ?? 'cnic'));
+                $rCount = (int) ($item['results_count'] ?? 1);
+                if ($rCount <= 0) {
+                    $rCount = 1;
+                }
+
+                $additionalCount += $rCount;
+                $lastQueryType = $qType;
+
+                if (str_contains($qType, 'cnic')) {
+                    $cnicAdd += $rCount;
+                } elseif (str_contains($qType, 'name')) {
+                    $nameAdd += $rCount;
+                } elseif (str_contains($qType, 'gharana')) {
+                    $gharanaAdd += $rCount;
+                } elseif (str_contains($qType, 'silsala')) {
+                    $silsalaAdd += $rCount;
+                } else {
+                    $cnicAdd += $rCount;
+                }
             }
-            SearchLog::insert($records);
         } elseif ($request->batch_count) {
-            SearchLog::create([
+            $bCount = (int) $request->batch_count;
+            if ($bCount > 0) {
+                $additionalCount = $bCount;
+                $lastQueryType = 'general';
+                $cnicAdd = $bCount;
+            }
+        }
+
+        if ($additionalCount > 0) {
+            // Keep exactly one row per device/candidate and increment the counters
+            $log = SearchLog::firstOrNew([
                 'user_id' => $userId,
-                'uc_id' => $ucId,
                 'device_uid' => $deviceUid,
-                'query_type' => 'general',
-                'results_count' => (int) $request->batch_count,
-                'searched_at' => Carbon::now(),
             ]);
-            $syncedCount = (int) $request->batch_count;
+
+            $log->uc_id = $ucId;
+            $log->query_type = $lastQueryType;
+            $log->results_count = ((int) $log->results_count) + $additionalCount;
+            $log->cnic_count = ((int) $log->cnic_count) + $cnicAdd;
+            $log->name_count = ((int) $log->name_count) + $nameAdd;
+            $log->gharana_count = ((int) $log->gharana_count) + $gharanaAdd;
+            $log->silsala_count = ((int) $log->silsala_count) + $silsalaAdd;
+            $log->searched_at = Carbon::now();
+            $log->save();
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Search telemetry synced successfully.',
-            'synced_count' => $syncedCount,
+            'synced_count' => $additionalCount,
         ]);
     }
 
@@ -589,8 +626,23 @@ class MobileApiController extends Controller
             ], 403);
         }
 
+        $stations = PollingStation::where('uc_id', $uc->id)
+            ->orderByRaw('CAST(station_no AS UNSIGNED) ASC')
+            ->orderBy('name')
+            ->get();
+
         return response()->json(
-            PollingStation::where('uc_id', $uc->id)->orderBy('name')->get(['id', 'name', 'address'])
+            $stations->map(fn ($ps) => [
+                'id' => $ps->id,
+                'station_no' => $ps->station_no,
+                'name' => $ps->name,
+                'gender' => $ps->gender,
+                'gender_ur' => $ps->gender_label_ur,
+                'address' => $ps->address,
+                'male_booths' => $ps->male_booths,
+                'female_booths' => $ps->female_booths,
+                'total_booths' => $ps->total_booths,
+            ])
         );
     }
 }

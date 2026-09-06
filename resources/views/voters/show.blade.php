@@ -120,11 +120,18 @@
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm h-100">
-                    <div class="card-header bg-white fw-semibold">Polling Station</div>
+                    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                        <span>Polling Station</span>
+                        @if ($voter->pollingStation)
+                            <span class="badge bg-{{ $voter->pollingStation->gender_badge_color }}-subtle text-{{ $voter->pollingStation->gender_badge_color }} border border-{{ $voter->pollingStation->gender_badge_color }}-subtle">
+                                <i class="bi {{ $voter->pollingStation->gender_icon }} me-1"></i>{{ $voter->pollingStation->gender_label_ur }}
+                            </span>
+                        @endif
+                    </div>
                     <div class="card-body small">
-                        <div><strong>Name:</strong> {{ $voter->pollingStation->name ?? '-' }}</div>
-                        @if ($voter->pollingStation->code)
-                            <div><strong>Code:</strong> {{ $voter->pollingStation->code }}</div>
+                        <div><strong>Name:</strong> {{ $voter->pollingStation ? (($voter->pollingStation->station_no ? '#' . $voter->pollingStation->station_no . ' ' : '') . $voter->pollingStation->name) : '-' }}</div>
+                        @if ($voter->pollingStation && $voter->pollingStation->address)
+                            <div><strong>Address:</strong> {{ $voter->pollingStation->address }}</div>
                         @endif
                         <div><strong>UC:</strong> {{ $voter->pollingStation->uc->name ?? '-' }}</div>
                     </div>
@@ -184,7 +191,16 @@
                 <div class="ps-cell"><span>Block Code</span><b>{{ $voter->blockCode->code ?? '-' }}</b></div>
                 <div class="ps-cell"><span>Silsala No</span><b>{{ $voter->silsala_no ?? '-' }}</b></div>
                 <div class="ps-cell"><span>Gharana No</span><b>{{ $voter->gharana_no ?? '-' }}</b></div>
-                <div class="ps-cell ps-full"><span>Polling Station</span><b>{{ $voter->pollingStation->name ?? '-' }}</b></div>
+                <div class="ps-cell ps-full">
+                    <span>Polling Station</span>
+                    <b>
+                        @if ($voter->pollingStation)
+                            {{ $voter->pollingStation->station_no ? '#' . $voter->pollingStation->station_no . ' ' : '' }}{{ $voter->pollingStation->name }} ({{ $voter->pollingStation->gender_label_ur }})
+                        @else
+                            -
+                        @endif
+                    </b>
+                </div>
             </div>
         </div>
     </div>

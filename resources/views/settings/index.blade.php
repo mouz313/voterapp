@@ -9,6 +9,9 @@
             <small class="text-muted">Manage full database exports, system backups, and maintenance routines</small>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 font-mono">
+                <i class="bi bi-clock-history me-1"></i> PKT (UTC+5): {{ $server_time }}
+            </span>
             <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 font-mono">
                 <i class="bi bi-database-check me-1"></i> DB: {{ $db_name }}
             </span>
@@ -79,9 +82,114 @@
                 </div>
                 <div class="col-6 col-md-2">
                     <div class="p-2 rounded bg-light border">
-                        <small class="text-muted d-block">Tables Count</small>
-                        <span class="fs-6 fw-bold text-success">19 Tables</span>
+                        <small class="text-muted d-block">Search Logs</small>
+                        <span class="fs-6 fw-bold text-primary">{{ number_format($counts['search_logs']) }} ({{ number_format($counts['total_searches']) }} Q)</span>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. WEB-BASED CRONJOBS & BACKGROUND AUTOMATIONS HUB -->
+    <div class="card shadow-sm border-0 border-start border-4 border-primary mb-4">
+        <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h6 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-clock-history me-2 text-primary"></i>Scheduled CronJobs &amp; System Automations (Web Console)
+                </h6>
+                <small class="text-muted">Monitor background tasks, inspect schedules in Pakistan Standard Time, and trigger jobs manually via web</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-mono">
+                    <i class="bi bi-geo-alt me-1"></i>PKT (UTC+05:00)
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle font-mono">
+                    <i class="bi bi-broadcast me-1"></i>Scheduler Active
+                </span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-matrix align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>CronJob / Automation Task</th>
+                        <th>Schedule Frequency</th>
+                        <th>Artisan Command</th>
+                        <th>Status</th>
+                        <th class="text-end">Manual Web Trigger</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($cron_jobs as $job)
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded p-2 bg-light border text-{{ $job['badge_color'] }}">
+                                        <i class="bi {{ $job['icon'] }} fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-dark">{{ $job['name'] }}</span>
+                                        <small class="text-muted d-block">{{ $job['description'] }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border font-mono">
+                                    <i class="bi bi-calendar-event me-1 text-primary"></i>{{ $job['schedule'] }}
+                                </span>
+                            </td>
+                            <td>
+                                <code class="text-primary font-mono small">{{ $job['command'] }}</code>
+                            </td>
+                            <td>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle font-mono">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Active
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                @if ($job['id'] === 'search-logs:clear')
+                                    <div class="btn-group">
+                                        <form method="POST" action="{{ route('settings.cron.run', 'search-logs:clear') }}" class="d-inline" onsubmit="return confirm('Prune search logs older than 30 days?');">
+                                            @csrf
+                                            <input type="hidden" name="days" value="30">
+                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Prune logs older than 30 days">
+                                                <i class="bi bi-clock-history me-1"></i> Prune &gt;30d
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('settings.cron.run', 'search-logs:clear') }}" class="d-inline ms-1" onsubmit="return confirm('WARNING: Are you sure you want to completely CLEAR ALL search logs?');">
+                                            @csrf
+                                            <input type="hidden" name="all" value="1">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Clear all search logs immediately">
+                                                <i class="bi bi-trash3 me-1"></i> Wipe All
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form method="POST" action="{{ route('settings.cron.run', $job['id']) }}" class="d-inline" onsubmit="return confirm('Execute {{ $job['name'] }} now?');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm" title="Run {{ $job['name'] }} immediately">
+                                            <i class="bi bi-play-fill me-1"></i> Run Now
+                                        </button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card-footer bg-light py-2 px-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small">
+                <div class="text-muted">
+                    <i class="bi bi-terminal me-1 text-primary"></i><strong>Server Crontab Setup:</strong> Add this standard cron command on Linux VPS / cPanel / Windows Task Scheduler:
+                </div>
+                <div class="input-group input-group-sm" style="max-width: 480px;">
+                    <input type="text" class="form-control font-mono bg-white" id="crontabCommand" value="* * * * * cd {{ base_path() }} && php artisan schedule:run >> /dev/null 2>&1" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('crontabCommand').value); toastr.info('Crontab command copied to clipboard!');">
+                        <i class="bi bi-copy me-1"></i> Copy
+                    </button>
                 </div>
             </div>
         </div>
@@ -187,6 +295,12 @@
                         @csrf
                         <input type="hidden" name="confirm" value="1">
                         <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Delete Locations ({{ $counts['ucs'] }} UCs)</button>
+                    </form>
+
+                    <form method="POST" action="{{ route('settings.purge', 'search-logs') }}" onsubmit="return confirm('WARNING: Delete ALL search telemetry logs?');">
+                        @csrf
+                        <input type="hidden" name="confirm" value="1">
+                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Delete Search Logs ({{ number_format($counts['search_logs'] ?? 0) }})</button>
                     </form>
 
                     <form method="POST" action="{{ route('settings.purge', 'all') }}" onsubmit="return confirm('CRITICAL ALERT: Are you completely sure you want to PURGE EVERYTHING? This will delete all voters, stations, block codes, and UCs.');">

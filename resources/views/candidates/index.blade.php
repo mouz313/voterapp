@@ -71,8 +71,10 @@
                                         </div>
                                     @endif
                                     <div>
-                                        <div class="fw-bold text-dark">{{ $candidate->name }}</div>
-                                        <small class="text-muted"><i class="bi bi-envelope me-1"></i>{{ $candidate->email }}</small>
+                                        <a href="{{ route('candidates.show', $candidate) }}" class="fw-bold text-dark text-decoration-none hover-primary">
+                                            {{ $candidate->name }}
+                                        </a>
+                                        <small class="text-muted d-block"><i class="bi bi-envelope me-1"></i>{{ $candidate->email }}</small>
                                     </div>
                                 </div>
                             </td>
@@ -107,8 +109,8 @@
                             </td>
                             <td>
                                 <a href="{{ route('candidates.devices', $candidate) }}" class="text-decoration-none">
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5">
-                                        <i class="bi bi-phone me-1"></i>{{ $candidate->active_devices_count }} Devices (Unlimited)
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 font-mono">
+                                        <i class="bi bi-phone me-1"></i>{{ $candidate->active_devices_count }} Active (Unlimited)
                                     </span>
                                 </a>
                             </td>
@@ -120,7 +122,9 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('candidates.devices', $candidate) }}" class="btn btn-sm btn-outline-info" title="View & Manage Devices"><i class="bi bi-phone"></i></a>
+                                <a href="{{ route('candidates.show', $candidate) }}" class="btn btn-sm btn-outline-primary" title="Performance Matrix & Stats"><i class="bi bi-speedometer2"></i></a>
+                                <a href="{{ route('candidates.report', $candidate) }}" class="btn btn-sm btn-outline-danger" title="Executive PDF Report"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <a href="{{ route('candidates.devices', $candidate) }}" class="btn btn-sm btn-outline-info" title="Manage Devices"><i class="bi bi-phone"></i></a>
                                 <a href="{{ route('candidates.edit', $candidate) }}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
                                 <form method="POST" action="{{ route('candidates.destroy', $candidate) }}" class="d-inline" onsubmit="return confirm('Delete candidate account {{ $candidate->name }}?');">
                                     @csrf @method('DELETE')

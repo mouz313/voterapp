@@ -115,6 +115,7 @@ Route::post('/reset-password', function (Request $request) {
 
 Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/search-telemetry', [DashboardController::class, 'searchTelemetry'])->name('dashboard.search-telemetry');
 
     // Constituencies / Assemblies Hierarchy
     Route::resource('national-assemblies', NationalAssembliesController::class)->except(['show']);
@@ -126,16 +127,23 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     Route::resource('ucs', UCsController::class)->except(['show']);
     Route::get('/ucs/{uc}', [UCsController::class, 'show'])->name('ucs.show');
     Route::get('/ucs/{uc}/block-codes', [UCsController::class, 'blockCodes'])->name('ucs.block-codes');
-    Route::get('/ucs/{uc}/polling-stations', fn (UC $uc) => PollingStation::where('uc_id', $uc->id)->orderBy('name')->get(['id', 'name']))->name('ucs.polling-stations');
+    Route::get('/ucs/{uc}/polling-stations', fn (UC $uc) => PollingStation::where('uc_id', $uc->id)->orderBy('name')->get(['id', 'station_no', 'name', 'gender', 'address']))->name('ucs.polling-stations');
     Route::get('/block-codes/import', [BlockCodesController::class, 'importForm'])->name('block-codes.import.form');
     Route::post('/block-codes/import', [BlockCodesController::class, 'import'])->name('block-codes.import');
     Route::resource('block-codes', BlockCodesController::class)->except(['show']);
-    Route::resource('polling-stations', PollingStationsController::class)->except(['show']);
+
+    // Polling Stations & Gender-Based Block Code Mapping
+    Route::get('/polling-stations/mapping', [PollingStationsController::class, 'mappingMatrix'])->name('polling-stations.mapping');
+    Route::post('/polling-stations/mapping', [PollingStationsController::class, 'updateMappingMatrix'])->name('polling-stations.mapping.update');
+    Route::post('/polling-stations/sync-voters', [PollingStationsController::class, 'syncVoters'])->name('polling-stations.sync-voters');
+    Route::get('/polling-stations/sample-template', [PollingStationsController::class, 'downloadSampleCsv'])->name('polling-stations.sample-template');
     Route::get('/polling-stations/import', [PollingStationsController::class, 'importForm'])->name('polling-stations.import.form');
     Route::post('/polling-stations/import', [PollingStationsController::class, 'import'])->name('polling-stations.import');
+    Route::resource('polling-stations', PollingStationsController::class)->except(['show']);
 
     // Candidate Management & Device Tracking
-    Route::resource('candidates', CandidatesController::class)->except(['show']);
+    Route::resource('candidates', CandidatesController::class);
+    Route::get('/candidates/{candidate}/report', [CandidatesController::class, 'report'])->name('candidates.report');
     Route::get('/candidates/{candidate}/devices', [CandidatesController::class, 'devices'])->name('candidates.devices');
     Route::post('/candidates/devices/{device}/toggle', [CandidatesController::class, 'toggleDeviceRevoke'])->name('candidates.devices.toggle');
     Route::delete('/candidates/devices/{device}', [CandidatesController::class, 'destroyDevice'])->name('candidates.devices.destroy');
@@ -155,6 +163,7 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     Route::post('/import/image', [PdfImportController::class, 'store'])->name('import.image.store');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/cron/run/{job}', [SettingsController::class, 'runCronJob'])->name('settings.cron.run');
     Route::post('/settings/purge/{type}', [SettingsController::class, 'purge'])->name('settings.purge');
     Route::get('/settings/backup/download', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
     Route::get('/settings/backup/file/{filename}', [SettingsController::class, 'downloadBackupFile'])->name('settings.backup.file');

@@ -14,15 +14,21 @@ class SpreadsheetService
      *
      * @return array<int, array<int, string>>
      */
-    public function readRows(string $path): array
+    public function readRows(string $path, ?string $originalExtension = null): array
     {
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $ext = strtolower($originalExtension ?: pathinfo($path, PATHINFO_EXTENSION));
 
         if ($ext === 'csv' || $ext === 'txt') {
             return $this->readCsv($path);
         }
 
-        return $this->readExcel($path);
+        $rows = $this->readExcel($path);
+        if (!empty($rows)) {
+            return $rows;
+        }
+
+        // If Excel reader failed or file had a temporary extension (.tmp), try reading as CSV
+        return $this->readCsv($path);
     }
 
     /**

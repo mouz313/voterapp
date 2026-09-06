@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlockCode;
 use App\Models\CandidateDevice;
 use App\Models\District;
+use App\Models\PollingStation;
+use App\Models\SearchLog;
 use App\Models\Tehsil;
 use App\Models\UC;
 use App\Models\User;
+use App\Models\Voter;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class CandidatesController extends Controller
@@ -69,7 +75,7 @@ class CandidatesController extends Controller
 
         $validated['role'] = 'candidate';
         $validated['password'] = Hash::make($validated['password']);
-        $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : 20;
+        $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : null;
         $validated['is_independent'] = $request->has('is_independent') || ($request->party_name === 'Independent' || $request->party_name === 'Azad');
 
         if ($request->hasFile('party_logo')) {
@@ -144,7 +150,7 @@ class CandidatesController extends Controller
             unset($validated['password']);
         }
 
-        $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : ($candidate->max_devices ?: 20);
+        $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : null;
         $validated['is_independent'] = $request->has('is_independent') || ($request->party_name === 'Independent' || $request->party_name === 'Azad');
 
         if ($request->hasFile('party_logo')) {
@@ -221,5 +227,153 @@ class CandidatesController extends Controller
         $device->delete();
 
         return back()->with('toast', ['type' => 'success', 'message' => 'Device record removed.']);
+    }
+
+    /**
+     * Display the specified candidate's profile, data, and comprehensive operational performance matrix.
+     */
+    public function show(User $candidate)
+    {
+        if ($candidate->role !== 'candidate') {
+            abort(404);
+        }
+
+        $candidate->load([
+            'uc.tehsil.district',
+            'uc.nationalAssembly',
+            'uc.provincialAssembly',
+            'devices' => fn ($q) => $q->orderBy('last_active_at', 'desc'),
+        ]);
+
+        $totalUcVoters = $candidate->uc_id ? Voter::where('uc_id', $candidate->uc_id)->count() : 0;
+        $totalPollingStations = $candidate->uc_id ? PollingStation::where('uc_id', $candidate->uc_id)->count() : 0;
+        $totalBlockCodes = $candidate->uc_id ? BlockCode::where('uc_id', $candidate->uc_id)->count() : 0;
+
+        $maxDevices = $candidate->max_devices ?: 'Unlimited';
+        $registeredDevices = $candidate->devices->count();
+        $activeDevices = $candidate->devices->where('is_revoked', false)->count();
+        $revokedDevices = $candidate->devices->where('is_revoked', true)->count();
+
+        // Search Telemetry & Performance
+        $searchLogs = SearchLog::where('user_id', $candidate->id)->get();
+        $totalSearches = (int) $searchLogs->sum('results_count');
+        $cnicCount = (int) $searchLogs->sum('cnic_count');
+        $nameCount = (int) $searchLogs->sum('name_count');
+        $gharanaCount = (int) $searchLogs->sum('gharana_count');
+        $silsalaCount = (int) $searchLogs->sum('silsala_count');
+
+        $reachPct = $totalUcVoters > 0 ? min(100, round(($totalSearches / $totalUcVoters) * 100, 1)) : 0;
+        $quotaPct = 0;
+
+        // Map searches to devices
+        $searchLogsByDevice = $searchLogs->keyBy('device_uid');
+        foreach ($candidate->devices as $dev) {
+            $log = $searchLogsByDevice->get($dev->device_uid);
+            $dev->searches_count = $log ? (int) $log->results_count : 0;
+            $dev->last_searched_at = $log ? $log->searched_at : null;
+        }
+
+        return view('candidates.show', compact(
+            'candidate',
+            'totalUcVoters',
+            'totalPollingStations',
+            'totalBlockCodes',
+            'maxDevices',
+            'registeredDevices',
+            'activeDevices',
+            'revokedDevices',
+            'totalSearches',
+            'cnicCount',
+            'nameCount',
+            'gharanaCount',
+            'silsalaCount',
+            'reachPct',
+            'quotaPct'
+        ));
+    }
+
+    /**
+     * Generate / preview candidate performance executive report for print or PDF download.
+     */
+    public function report(Request $request, User $candidate)
+    {
+        if ($candidate->role !== 'candidate') {
+            abort(404);
+        }
+
+        $candidate->load([
+            'uc.tehsil.district',
+            'uc.nationalAssembly',
+            'uc.provincialAssembly',
+            'devices' => fn ($q) => $q->orderBy('last_active_at', 'desc'),
+        ]);
+
+        $totalUcVoters = $candidate->uc_id ? Voter::where('uc_id', $candidate->uc_id)->count() : 0;
+        $totalPollingStations = $candidate->uc_id ? PollingStation::where('uc_id', $candidate->uc_id)->count() : 0;
+        $totalBlockCodes = $candidate->uc_id ? BlockCode::where('uc_id', $candidate->uc_id)->count() : 0;
+
+        $maxDevices = $candidate->max_devices ?: 'Unlimited';
+        $registeredDevices = $candidate->devices->count();
+        $activeDevices = $candidate->devices->where('is_revoked', false)->count();
+        $revokedDevices = $candidate->devices->where('is_revoked', true)->count();
+
+        $searchLogs = SearchLog::where('user_id', $candidate->id)->get();
+        $totalSearches = (int) $searchLogs->sum('results_count');
+        $cnicCount = (int) $searchLogs->sum('cnic_count');
+        $nameCount = (int) $searchLogs->sum('name_count');
+        $gharanaCount = (int) $searchLogs->sum('gharana_count');
+        $silsalaCount = (int) $searchLogs->sum('silsala_count');
+
+        $reachPct = $totalUcVoters > 0 ? min(100, round(($totalSearches / $totalUcVoters) * 100, 1)) : 0;
+        $quotaPct = 0;
+
+        $searchLogsByDevice = $searchLogs->keyBy('device_uid');
+        foreach ($candidate->devices as $dev) {
+            $log = $searchLogsByDevice->get($dev->device_uid);
+            $dev->searches_count = $log ? (int) $log->results_count : 0;
+            $dev->last_searched_at = $log ? $log->searched_at : null;
+        }
+
+        if ($request->query('download') === 'pdf') {
+            $pdf = Pdf::loadView('candidates.pdf', compact(
+                'candidate',
+                'totalUcVoters',
+                'totalPollingStations',
+                'totalBlockCodes',
+                'maxDevices',
+                'registeredDevices',
+                'activeDevices',
+                'revokedDevices',
+                'totalSearches',
+                'cnicCount',
+                'nameCount',
+                'gharanaCount',
+                'silsalaCount',
+                'reachPct',
+                'quotaPct'
+            ))->setPaper('a4', 'portrait');
+
+            $filename = 'Performance_Report_' . Str::slug($candidate->name) . '_' . date('Ymd_His') . '.pdf';
+
+            return $pdf->download($filename);
+        }
+
+        return view('candidates.report', compact(
+            'candidate',
+            'totalUcVoters',
+            'totalPollingStations',
+            'totalBlockCodes',
+            'maxDevices',
+            'registeredDevices',
+            'activeDevices',
+            'revokedDevices',
+            'totalSearches',
+            'cnicCount',
+            'nameCount',
+            'gharanaCount',
+            'silsalaCount',
+            'reachPct',
+            'quotaPct'
+        ));
     }
 }

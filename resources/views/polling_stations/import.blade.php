@@ -8,9 +8,14 @@
             <h4 class="page-title mb-0">Import Polling Stations (CSV / Excel)</h4>
             <small class="text-muted">Upload list of polling stations, booth locations, and capacities for a Union Council</small>
         </div>
-        <a href="{{ route('polling-stations.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Back
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('polling-stations.sample-template') }}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Sample CSV Template
+            </a>
+            <a href="{{ route('polling-stations.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
     </div>
 
     <!-- TOP STATUS SUMMARY: UPLOADED VS PENDING UCS -->
@@ -104,8 +109,17 @@
                         </div>
 
                         <div class="alert alert-light border small my-3">
-                            <div class="fw-bold mb-1"><i class="bi bi-info-circle me-1 text-primary"></i> Expected Columns:</div>
-                            <code>name, address, total_voters, male_voters, female_voters</code>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold"><i class="bi bi-info-circle me-1 text-primary"></i> Supported ECP Polling Scheme Columns:</div>
+                                <a href="{{ route('polling-stations.sample-template') }}" class="btn btn-sm btn-link text-success p-0 fw-bold text-decoration-none">
+                                    <i class="bi bi-download me-1"></i> Download Sample CSV
+                                </a>
+                            </div>
+                            <code class="d-block mb-2 font-mono">station_no, name, gender, block_codes, address, male_booths, female_booths, total_booths</code>
+                            <ul class="mb-0 ps-3 text-muted" style="font-size: 0.8rem;">
+                                <li><strong>gender:</strong> <code>male</code> (مردانہ), <code>female</code> (زنانہ), or <code>combined</code> (مشترکہ). Default is combined.</li>
+                                <li><strong>block_codes:</strong> Single or comma-separated Census Block Codes (e.g. <code>123456701, 123456702</code>) to automatically link with this station.</li>
+                            </ul>
                         </div>
 
                         <div class="d-flex justify-content-between">

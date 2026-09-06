@@ -64,6 +64,52 @@ class Voter extends Model
         return self::formatCnic($this->cnic);
     }
 
+    /**
+     * Determine gender from Pakistani CNIC standard:
+     * Odd last digit = Male (1, 3, 5, 7, 9)
+     * Even last digit = Female (0, 2, 4, 6, 8)
+     */
+    public function getGenderAttribute(): string
+    {
+        $clean = preg_replace('/\D/', '', (string) $this->cnic);
+        if (strlen($clean) < 1) {
+            return 'male';
+        }
+        $lastDigit = (int) substr($clean, -1);
+        return ($lastDigit % 2 === 0) ? 'female' : 'male';
+    }
+
+    public function getGenderLabelUrAttribute(): string
+    {
+        return $this->gender === 'female' ? 'عورت' : 'مرد';
+    }
+
+    public function getGenderBadgeColorAttribute(): string
+    {
+        return $this->gender === 'female' ? 'danger' : 'primary';
+    }
+
+    /**
+     * Resolve the appropriate polling station ID based on voter gender & block code.
+     */
+    public function resolvePollingStationId(): ?int
+    {
+        $block = $this->blockCode;
+        if (!$block) {
+            return $this->polling_station_id;
+        }
+
+        if ($this->gender === 'female') {
+            return $block->female_polling_station_id 
+                ?: $block->male_polling_station_id 
+                ?: $this->polling_station_id;
+        }
+
+        return $block->male_polling_station_id 
+            ?: $block->female_polling_station_id 
+            ?: $this->polling_station_id;
+    }
+
     public function scopeByCnic(Builder $query, string $cnic): Builder
     {
         return $query->where('cnic', self::normalizeCnic($cnic));

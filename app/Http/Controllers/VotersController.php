@@ -319,17 +319,20 @@ class VotersController extends Controller
                     $block = BlockCode::firstOrCreate(['uc_id' => $uc->id, 'code' => $blockCodeVal]);
                 }
 
-                // Polling station: use the pre-selected station, else the column value, else default '—'.
+                // Polling station: use pre-selected station, else auto-resolve from block code by voter gender, else column value, else '—'.
                 if ($preStation) {
                     $station = $preStation;
                 } else {
-                    $stationVal = trim((string) ($data['polling_station'] ?? ''));
-                    if ($stationVal === '') {
-                        $stationVal = '—';
+                    $resolvedStation = $block->getPollingStationForVoter($cnic);
+                    if ($resolvedStation) {
+                        $station = $resolvedStation;
+                    } else {
+                        $stationVal = trim((string) ($data['polling_station'] ?? ''));
+                        if ($stationVal === '') {
+                            $stationVal = '—';
+                        }
+                        $station = PollingStation::firstOrCreate(['uc_id' => $uc->id, 'name' => $stationVal]);
                     }
-
-                    // Auto-create referenced polling station if missing.
-                    $station = PollingStation::firstOrCreate(['uc_id' => $uc->id, 'name' => $stationVal]);
                 }
 
                 Voter::create([

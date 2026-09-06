@@ -27,7 +27,7 @@
             </button>
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="{{ route('dashboard') }}">
                 <span class="brand-logo"><i class="bi bi-shield-check"></i></span>
-                <span>VoterApp <small class="text-success fw-semibold ms-1 font-monospace" style="font-size: 0.72rem;">ECP Edition</small></span>
+                <span>VoterApp<small class="text-success fw-semibold ms-1 font-monospace d-none d-sm-inline" style="font-size: 0.72rem;">ECP Edition</small></span>
             </a>
 
             <div class="ms-auto d-flex align-items-center gap-2 gap-sm-3">
@@ -60,6 +60,9 @@
     </header>
 
     <div class="app-body">
+        <!-- Sidebar Mobile Backdrop -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
         <!-- Sidebar -->
         <aside class="app-sidebar" id="appSidebar">
             <div class="sidebar-brand">
@@ -96,8 +99,11 @@
                 <a href="{{ route('block-codes.index') }}" class="sidebar-link {{ (Request::is('block-codes*') && !Request::is('block-codes/import*')) ? 'active' : '' }}">
                     <i class="bi bi-collection"></i> <span>Census Block Codes</span>
                 </a>
-                <a href="{{ route('polling-stations.index') }}" class="sidebar-link {{ (Request::is('polling-stations*') && !Request::is('polling-stations/import*')) ? 'active' : '' }}">
+                <a href="{{ route('polling-stations.index') }}" class="sidebar-link {{ (Request::is('polling-stations') || (Request::is('polling-stations/*') && !Request::is('polling-stations/mapping*') && !Request::is('polling-stations/import*'))) ? 'active' : '' }}">
                     <i class="bi bi-house-door"></i> <span>Polling Stations</span>
+                </a>
+                <a href="{{ route('polling-stations.mapping') }}" class="sidebar-link {{ Request::is('polling-stations/mapping*') ? 'active' : '' }}">
+                    <i class="bi bi-diagram-3-fill"></i> <span>Polling Scheme Mapping</span>
                 </a>
 
                 <p class="sidebar-heading">App Distribution</p>

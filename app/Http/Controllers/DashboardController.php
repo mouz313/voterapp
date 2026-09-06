@@ -33,7 +33,7 @@ class DashboardController extends Controller
             'voters' => Voter::count(),
             'candidates' => User::where('role', 'candidate')->count(),
             'active_devices' => CandidateDevice::where('is_revoked', false)->count(),
-            'total_searches' => SearchLog::count(),
+            'total_searches' => (int) SearchLog::sum('results_count'),
         ];
 
         // 2. Tehsil $\rightarrow$ UC $\rightarrow$ Block Delimitation & Progress Matrix
@@ -82,9 +82,8 @@ class DashboardController extends Controller
             ->take(8)
             ->get()
             ->map(function ($c) {
-                $max = $c->max_devices ?: 20;
+                $max = $c->max_devices ? $c->max_devices : 'Unlimited';
                 $active = $c->active_devices_count;
-                $pct = round(($active / $max) * 100);
                 $lastDevice = $c->devices->where('is_revoked', false)->sortByDesc('last_active_at')->first();
 
                 return [
@@ -95,7 +94,6 @@ class DashboardController extends Controller
                     'uc_name' => $c->uc ? ($c->uc->tehsil?->name . ' - UC ' . ($c->uc->uc_no ?: $c->uc->id) . ' (' . $c->uc->name . ')') : 'Unassigned',
                     'active_devices' => $active,
                     'max_devices' => $max,
-                    'utilization_pct' => $pct,
                     'status' => $c->status,
                     'expires_at' => $c->expires_at,
                     'last_active' => $lastDevice ? $lastDevice->last_active_at : null,
@@ -103,10 +101,12 @@ class DashboardController extends Controller
             });
 
         // 4. Live Search Activity & Query Distribution Matrix
-        $searchBreakdown = SearchLog::select('query_type', DB::raw('count(*) as count'))
-            ->groupBy('query_type')
-            ->pluck('count', 'query_type')
-            ->toArray();
+        $searchBreakdown = [
+            'cnic' => (int) SearchLog::sum('cnic_count'),
+            'name' => (int) SearchLog::sum('name_count'),
+            'gharana' => (int) SearchLog::sum('gharana_count'),
+            'silsala' => (int) SearchLog::sum('silsala_count'),
+        ];
 
         $recentSearches = SearchLog::with(['user', 'uc.tehsil'])
             ->latest('searched_at')
@@ -134,5 +134,36 @@ class DashboardController extends Controller
             'recentSearches',
             'pollingStats'
         ));
+    }
+
+    /**
+     * Live AJAX Telemetry for Field Search Breakdown.
+     */
+    public function searchTelemetry(Request $request)
+    {
+        $totalSearches = (int) SearchLog::sum('results_count');
+
+        $searchBreakdown = [
+            'cnic' => (int) SearchLog::sum('cnic_count'),
+            'name' => (int) SearchLog::sum('name_count'),
+            'gharana' => (int) SearchLog::sum('gharana_count'),
+            'silsala' => (int) SearchLog::sum('silsala_count'),
+        ];
+
+        $recentSearches = SearchLog::with(['user', 'uc.tehsil'])
+            ->latest('searched_at')
+            ->take(8)
+            ->get();
+
+        $html = view('dashboard.partials.search_telemetry', compact('searchBreakdown', 'recentSearches'))->render();
+
+        return response()->json([
+            'success' => true,
+            'total_searches' => number_format($totalSearches),
+            'raw_total' => $totalSearches,
+            'breakdown' => $searchBreakdown,
+            'html' => $html,
+            'timestamp' => now()->format('h:i:s A'),
+        ]);
     }
 }

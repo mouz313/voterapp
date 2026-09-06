@@ -8,7 +8,10 @@
             <h4 class="page-title mb-0">Census Block Codes & Electoral Areas</h4>
             <small class="text-muted">ECP Delimitation mapping: Tehsil &rarr; UC &rarr; Census Block Code & Area Extent</small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('polling-stations.mapping', ['uc_id' => $selectedUcId]) }}" class="btn btn-outline-primary">
+                <i class="bi bi-diagram-3-fill me-1"></i> Polling Scheme Mapping Matrix
+            </a>
             <a href="{{ route('block-codes.import.form') }}" class="btn btn-outline-success">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import Delimitation List (CSV/Excel)
             </a>
@@ -70,6 +73,7 @@
                         <th>Extent of Union Council (Electoral Area / Mohallah)</th>
                         <th>Union Council (UC)</th>
                         <th>Tehsil</th>
+                        <th>Designated Polling Stations</th>
                         <th>Population</th>
                         <th>Voters Registered</th>
                         <th class="text-end">Actions</th>
@@ -94,6 +98,30 @@
                             <td>
                                 <span class="fw-semibold">{{ $bc->uc->tehsil->name ?? '-' }}</span>
                                 <small class="text-muted d-block">{{ $bc->uc->tehsil->district->name ?? '' }}</small>
+                            </td>
+                            <td>
+                                @if ($bc->malePollingStation || $bc->femalePollingStation)
+                                    @if ($bc->malePollingStation)
+                                        <div class="small mb-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-mono" style="font-size: 0.72rem;">
+                                                <i class="bi bi-gender-male me-1"></i>{{ Str::limit($bc->malePollingStation->name, 25) }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                    @if ($bc->femalePollingStation && $bc->female_polling_station_id !== $bc->male_polling_station_id)
+                                        <div class="small">
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle font-mono" style="font-size: 0.72rem;">
+                                                <i class="bi bi-gender-female me-1"></i>{{ Str::limit($bc->femalePollingStation->name, 25) }}
+                                            </span>
+                                        </div>
+                                    @elseif ($bc->female_polling_station_id === $bc->male_polling_station_id)
+                                        <small class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-check2-all text-success me-1"></i>Same for Female</small>
+                                    @endif
+                                @else
+                                    <a href="{{ route('polling-stations.mapping', ['uc_id' => $bc->uc_id]) }}" class="badge bg-warning-subtle text-warning border border-warning-subtle text-decoration-none" title="Assign stations in mapping matrix">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Unmapped
+                                    </a>
+                                @endif
                             </td>
                             <td>
                                 @if($bc->population)

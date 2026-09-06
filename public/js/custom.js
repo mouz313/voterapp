@@ -3,23 +3,54 @@
    ============================================================ */
 
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. Mobile Sidebar Toggle
+    // 1. Responsive Sidebar Toggle & Backdrop Handling
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('appSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    function closeMobileSidebar() {
+        if (sidebar) sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('show');
+        document.body.classList.remove('sidebar-open-mobile');
+    }
+
+    function openMobileSidebar() {
+        if (sidebar) sidebar.classList.add('open');
+        if (backdrop) backdrop.classList.add('show');
+        document.body.classList.add('sidebar-open-mobile');
+    }
 
     if (toggle && sidebar) {
-        toggle.addEventListener('click', function () {
-            document.body.classList.toggle('sidebar-collapsed');
-            sidebar.classList.toggle('open');
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (window.innerWidth < 992) {
+                if (sidebar.classList.contains('open')) {
+                    closeMobileSidebar();
+                } else {
+                    openMobileSidebar();
+                }
+            } else {
+                document.body.classList.toggle('sidebar-collapsed');
+            }
         });
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMobileSidebar);
     }
 
     sidebar?.querySelectorAll('.sidebar-link').forEach(function (link) {
         link.addEventListener('click', function () {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove('open');
+            if (window.innerWidth < 992) {
+                closeMobileSidebar();
             }
         });
+    });
+
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 992) {
+            closeMobileSidebar();
+        }
     });
 
     // 2. Smart File Size & Estimated Time Calculation Component

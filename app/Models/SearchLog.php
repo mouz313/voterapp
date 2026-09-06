@@ -16,6 +16,10 @@ class SearchLog extends Model
         'device_uid',
         'query_type',
         'results_count',
+        'cnic_count',
+        'name_count',
+        'gharana_count',
+        'silsala_count',
         'searched_at',
     ];
 

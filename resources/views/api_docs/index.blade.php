@@ -53,7 +53,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted small mb-3">
-                        Authenticates candidate worker credentials, registers the physical mobile device UID, enforces candidate max devices quota (e.g. max 20 devices per UC account), and returns authorization token, candidate profile, party branding (party logo, candidate photo, election symbol), and UC details.
+                        Authenticates candidate worker credentials, registers the physical mobile device UID (unlimited devices allowed per candidate UC account), and returns authorization token, candidate profile, party branding (party logo, candidate photo, election symbol), and UC details.
                     </p>
 
                     <div class="row g-3">
@@ -138,7 +138,7 @@
     "name": "{{ $sampleCandidate->name ?? 'Candidate Name' }}",
     "email": "{{ $sampleCandidate->email ?? 'candidate@election.com' }}",
     "phone": "{{ $sampleCandidate->phone ?? '0300-1234567' }}",
-    "max_devices": {{ $sampleCandidate->max_devices ?? 20 }},
+    "max_devices": null,
     "active_devices": 1
   },
   "branding": {

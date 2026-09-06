@@ -106,7 +106,7 @@
               Pakistan Election VoterApp <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">System & API Architecture</span>
             </h1>
             <p class="text-slate-300 text-base leading-relaxed mb-6">
-              A robust, multi-tenant electoral management platform engineered for Pakistan's democratic structure. Designed to sell dedicated, offline-first mobile voter search apps to Union Council (UC) candidates with strict device login limits (max 20 devices), real-time background sync, and instant paperless verification.
+              A robust, multi-tenant electoral management platform engineered for Pakistan's democratic structure. Designed to sell dedicated, offline-first mobile voter search apps to Union Council (UC) candidates with unlimited mobile device support, real-time background sync, and instant paperless verification.
             </p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
@@ -114,7 +114,7 @@
                 <div class="text-xs text-slate-400">Offline SQLite Search</div>
               </div>
               <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-                <div class="text-2xl font-bold text-sky-400">20 Max</div>
+                <div class="text-2xl font-bold text-sky-400">Unlimited</div>
                 <div class="text-xs text-slate-400">Devices Per Candidate</div>
               </div>
               <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
@@ -164,15 +164,15 @@
               <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0">1</div>
               <div>
                 <h4 class="font-semibold text-white text-sm">Account Creation & UC Locking</h4>
-                <p class="text-slate-400 text-xs mt-1">Admin registers candidate with Email, Password, Assigned UC (e.g. UC-14), and Maximum Allowed Devices (e.g. 20 devices).</p>
+                <p class="text-slate-400 text-xs mt-1">Admin registers candidate with Email, Password, Assigned UC (e.g. UC-14), and unlimited authorized mobile handsets.</p>
               </div>
             </div>
 
             <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start space-x-4">
               <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0">2</div>
               <div>
-                <h4 class="font-semibold text-white text-sm">Automated Quota & Hardware UUID Lock</h4>
-                <p class="text-slate-400 text-xs mt-1">When polling workers log in, the API captures their phone hardware UUID. If active devices $\le 20$, login succeeds. The 21st device is automatically rejected with HTTP 403.</p>
+                <h4 class="font-semibold text-white text-sm">Automated Registration & Hardware UUID Authorization</h4>
+                <p class="text-slate-400 text-xs mt-1">When polling workers log in, the API captures their phone hardware UUID and authorizes the device without artificial login caps.</p>
               </div>
             </div>
 

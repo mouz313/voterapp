@@ -34,7 +34,7 @@ class BlockCodesController extends Controller
             }
         }
 
-        $blockCodes = BlockCode::with(['uc.tehsil.district', 'uc.provincialAssembly'])
+        $blockCodes = BlockCode::with(['uc.tehsil.district', 'uc.provincialAssembly', 'malePollingStation', 'femalePollingStation'])
             ->withCount('voters')
             ->when($selectedTehsilId, function ($q, $tid) {
                 $q->whereHas('uc', fn ($sub) => $sub->where('tehsil_id', $tid));
@@ -62,8 +62,9 @@ class BlockCodesController extends Controller
             ->get();
 
         $ucId = $request->query('uc_id');
+        $stations = $ucId ? \App\Models\PollingStation::where('uc_id', $ucId)->orderBy('name')->get() : collect();
 
-        return view('block_codes.create', compact('tehsils', 'ucs', 'ucId'));
+        return view('block_codes.create', compact('tehsils', 'ucs', 'ucId', 'stations'));
     }
 
     public function store(Request $request)
@@ -74,6 +75,8 @@ class BlockCodesController extends Controller
             'area_name' => 'nullable|string',
             'area_name_ur' => 'nullable|string',
             'population' => 'nullable|integer|min:0',
+            'male_polling_station_id' => 'nullable|exists:polling_stations,id',
+            'female_polling_station_id' => 'nullable|exists:polling_stations,id',
         ]);
 
         BlockCode::create($validated);
@@ -91,7 +94,9 @@ class BlockCodesController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('block_codes.edit', compact('blockCode', 'tehsils', 'ucs'));
+        $stations = \App\Models\PollingStation::where('uc_id', $blockCode->uc_id)->orderBy('name')->get();
+
+        return view('block_codes.edit', compact('blockCode', 'tehsils', 'ucs', 'stations'));
     }
 
     public function update(Request $request, BlockCode $blockCode)
@@ -102,6 +107,8 @@ class BlockCodesController extends Controller
             'area_name' => 'nullable|string',
             'area_name_ur' => 'nullable|string',
             'population' => 'nullable|integer|min:0',
+            'male_polling_station_id' => 'nullable|exists:polling_stations,id',
+            'female_polling_station_id' => 'nullable|exists:polling_stations,id',
         ]);
 
         $blockCode->update($validated);
