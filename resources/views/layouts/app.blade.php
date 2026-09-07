@@ -45,6 +45,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                         <li><a class="dropdown-item py-2 small" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2 text-success"></i>Dashboard Matrix</a></li>
+                        <li><a class="dropdown-item py-2 small" href="{{ route('finance.index') }}"><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Finance &amp; Sales Vault</a></li>
                         <li><a class="dropdown-item py-2 small" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2 text-secondary"></i>System Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
@@ -106,9 +107,12 @@
                     <i class="bi bi-diagram-3-fill"></i> <span>Polling Scheme Mapping</span>
                 </a>
 
-                <p class="sidebar-heading">App Distribution</p>
+                <p class="sidebar-heading">App Distribution &amp; Sales</p>
                 <a href="{{ route('candidates.index') }}" class="sidebar-link {{ Request::is('candidates*') ? 'active' : '' }}">
-                    <i class="bi bi-person-badge"></i> <span>Candidates & Devices</span>
+                    <i class="bi bi-person-badge"></i> <span>Candidates &amp; Devices</span>
+                </a>
+                <a href="{{ route('finance.index') }}" class="sidebar-link {{ Request::is('finance*') ? 'active' : '' }}">
+                    <i class="bi bi-shield-lock-fill text-warning"></i> <span>Finance &amp; Sales Vault</span>
                 </a>
 
                 <p class="sidebar-heading">Imports & Processing</p>

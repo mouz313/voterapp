@@ -51,7 +51,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.innerWidth >= 992) {
             closeMobileSidebar();
         }
+        if (window.scrollX !== 0) {
+            window.scrollTo(0, window.scrollY);
+        }
     });
+
+    if (window.scrollX !== 0) {
+        window.scrollTo(0, window.scrollY);
+    }
 
     // 2. Smart File Size & Estimated Time Calculation Component
     initFileUploadInspectors();

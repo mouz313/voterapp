@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'finance.auth' => \App\Http\Middleware\FinanceSecurityMiddleware::class,
+        ]);
+
         $middleware->appendToGroup('api', [
             HandleCors::class,
             \App\Http\Middleware\ApiKeyMiddleware::class,

@@ -4,6 +4,7 @@ use App\Http\Controllers\BlockCodesController;
 use App\Http\Controllers\CandidatesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictsController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\NationalAssembliesController;
 use App\Http\Controllers\PdfImportController;
 use App\Http\Controllers\PollingStationsController;
@@ -147,6 +148,30 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     Route::get('/candidates/{candidate}/devices', [CandidatesController::class, 'devices'])->name('candidates.devices');
     Route::post('/candidates/devices/{device}/toggle', [CandidatesController::class, 'toggleDeviceRevoke'])->name('candidates.devices.toggle');
     Route::delete('/candidates/devices/{device}', [CandidatesController::class, 'destroyDevice'])->name('candidates.devices.destroy');
+
+    // Finance & Sales Vault Security Unlock
+    Route::get('/finance/unlock', [FinanceController::class, 'showUnlockForm'])->name('finance.unlock');
+    Route::post('/finance/unlock', [FinanceController::class, 'unlock'])->name('finance.unlock.post');
+    Route::post('/finance/lock', [FinanceController::class, 'lock'])->name('finance.lock');
+
+    // Password Protected Finance & Sales Routes
+    Route::middleware(['finance.auth'])->prefix('finance')->name('finance.')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('index');
+        Route::get('/sales', [FinanceController::class, 'sales'])->name('sales');
+        Route::put('/sales/{sale}', [FinanceController::class, 'updateSale'])->name('sales.update');
+
+        Route::get('/parties', [FinanceController::class, 'parties'])->name('parties');
+        Route::post('/parties', [FinanceController::class, 'storeParty'])->name('parties.store');
+        Route::put('/parties/{party}', [FinanceController::class, 'updateParty'])->name('parties.update');
+
+        Route::get('/partners', [FinanceController::class, 'partners'])->name('partners');
+        Route::post('/partners', [FinanceController::class, 'storePartner'])->name('partners.store');
+        Route::put('/partners/{partner}', [FinanceController::class, 'updatePartner'])->name('partners.update');
+        Route::post('/payouts', [FinanceController::class, 'storePayout'])->name('payouts.store');
+
+        Route::get('/security', [FinanceController::class, 'securitySettings'])->name('security');
+        Route::post('/security', [FinanceController::class, 'updateSecurity'])->name('security.update');
+    });
 
     // Voters & Search
     Route::get('/voters/import', [VotersController::class, 'importForm'])->name('voters.import.form');

@@ -117,6 +117,43 @@
         </div>
     </div>
 
+    @if ($candidate->sale)
+        <div class="card shadow-sm border-0 mb-4 bg-white">
+            <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle p-2 bg-primary-subtle text-primary">
+                        <i class="bi bi-receipt-cutoff fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark">App Licensing & Commercial Sale Record</div>
+                        <div class="small text-muted">
+                            Channel / Party: <strong class="text-dark">{{ $candidate->sale->party->name ?? 'Direct Sale' }}</strong>
+                            &bull; License Price: <strong class="text-dark font-mono">PKR {{ number_format($candidate->sale->sale_amount) }}</strong>
+                            &bull; Paid: <strong class="text-success font-mono">PKR {{ number_format($candidate->sale->amount_paid) }}</strong>
+                            @php $bal = $candidate->sale->sale_amount - $candidate->sale->amount_paid; @endphp
+                            @if($bal > 0)
+                                &bull; Remaining Balance: <strong class="text-danger font-mono">PKR {{ number_format($bal) }}</strong>
+                            @endif
+                            @if($candidate->sale->payment_date)
+                                &bull; Date: <span class="text-secondary font-mono">{{ $candidate->sale->payment_date->format('d M Y') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if($candidate->sale->payment_status === 'paid')
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully Paid</span>
+                    @elseif($candidate->sale->payment_status === 'partial')
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2"><i class="bi bi-clock-history me-1"></i>Partial Payment</span>
+                    @else
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Payment Pending</span>
+                    @endif
+                    <a href="{{ route('finance.sales') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-shield-lock me-1"></i>Finance Vault</a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Operational KPI Metrics Cards -->
     <div class="row g-3 mb-4">
         <!-- 1. UC Registered Voters -->

@@ -202,6 +202,93 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                            <!-- 4. APP SALE & FINANCIAL LICENSING DETAILS (PARTY A / PARTY B) -->
+                            <div class="col-12 mt-4">
+                                <div class="p-3 rounded bg-light border border-warning-subtle">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="fw-bold text-dark mb-0">
+                                            <i class="bi bi-cash-coin me-1 text-warning"></i> App Sale &amp; Licensing Details (سیلز اور فنانس ریکارڈ)
+                                        </h6>
+                                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle font-mono">
+                                            <i class="bi bi-shield-lock me-1"></i> Finance Vault
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block mb-3">Record the selling party channel and agreed price charged to this candidate</small>
+
+                                    <div class="row g-3">
+                                        <!-- Selling Party / Channel -->
+                                        <div class="col-md-4">
+                                            <label for="sales_party_id" class="form-label fw-semibold">Selling Party / Distributor <span class="text-danger">*</span></label>
+                                            <select name="sales_party_id" id="sales_party_id" class="form-select border-warning @error('sales_party_id') is-invalid @enderror" onchange="updateDefaultPrice(this)">
+                                                <option value="">-- Direct Sale (No Party) --</option>
+                                                @foreach ($salesParties as $sp)
+                                                    <option value="{{ $sp->id }}" data-price="{{ $sp->default_price }}" {{ (old('sales_party_id', $salesParties->first()?->id) == $sp->id) ? 'selected' : '' }}>
+                                                        {{ $sp->name }} ({{ $sp->code }}) &bull; Default: PKR {{ number_format($sp->default_price) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @error('sales_party_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+
+                                        <!-- Price Charged (PKR) -->
+                                        <div class="col-md-4">
+                                            <label for="sale_amount" class="form-label fw-semibold">App License Price Charged (PKR) <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light fw-bold">PKR</span>
+                                                <input type="number" name="sale_amount" id="sale_amount" class="form-control font-mono fw-bold text-dark @error('sale_amount') is-invalid @enderror" value="{{ old('sale_amount', 20000) }}" min="0" step="500" placeholder="e.g. 20000" required>
+                                            </div>
+                                            <small class="text-muted">Agreed license fee charged to this candidate</small>
+                                            @error('sale_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+
+                                        <!-- Amount Paid (PKR) -->
+                                        <div class="col-md-4">
+                                            <label for="amount_paid" class="form-label fw-semibold">Amount Received / Paid (PKR)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light fw-bold">PKR</span>
+                                                <input type="number" name="amount_paid" id="amount_paid" class="form-control font-mono @error('amount_paid') is-invalid @enderror" value="{{ old('amount_paid', 20000) }}" min="0" step="500" placeholder="e.g. 20000">
+                                            </div>
+                                            <small class="text-muted">Defaults to full price if paid</small>
+                                            @error('amount_paid') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+
+                                        <!-- Payment Status -->
+                                        <div class="col-md-4">
+                                            <label for="payment_status" class="form-label fw-semibold">Payment Status <span class="text-danger">*</span></label>
+                                            <select name="payment_status" id="payment_status" class="form-select @error('payment_status') is-invalid @enderror" onchange="syncPaymentStatus(this.value)">
+                                                <option value="paid" {{ old('payment_status', 'paid') === 'paid' ? 'selected' : '' }}>Paid (مکمل وصول شدہ)</option>
+                                                <option value="pending" {{ old('payment_status') === 'pending' ? 'selected' : '' }}>Pending (باقیہ / ادائیگی زیر التواء)</option>
+                                                <option value="partial" {{ old('payment_status') === 'partial' ? 'selected' : '' }}>Partial (جزوی ادائیگی)</option>
+                                            </select>
+                                            @error('payment_status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+
+                                        <!-- Payment Method -->
+                                        <div class="col-md-4">
+                                            <label for="payment_method" class="form-label fw-semibold">Payment Method</label>
+                                            <select name="payment_method" id="payment_method" class="form-select">
+                                                <option value="Cash" {{ old('payment_method', 'Cash') === 'Cash' ? 'selected' : '' }}>Cash (نقدی)</option>
+                                                <option value="Bank Transfer" {{ old('payment_method') === 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer (آن لائن بینک)</option>
+                                                <option value="JazzCash" {{ old('payment_method') === 'JazzCash' ? 'selected' : '' }}>JazzCash</option>
+                                                <option value="EasyPaisa" {{ old('payment_method') === 'EasyPaisa' ? 'selected' : '' }}>EasyPaisa</option>
+                                                <option value="Cheque" {{ old('payment_method') === 'Cheque' ? 'selected' : '' }}>Cheque (بینک چیک)</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Payment Date -->
+                                        <div class="col-md-4">
+                                            <label for="payment_date" class="form-label fw-semibold">Payment Date</label>
+                                            <input type="date" name="payment_date" id="payment_date" class="form-control" value="{{ old('payment_date', date('Y-m-d')) }}">
+                                        </div>
+
+                                        <!-- Notes -->
+                                        <div class="col-12">
+                                            <label for="sales_notes" class="form-label fw-semibold">Sales Notes &amp; Transaction Details (Optional)</label>
+                                            <input type="text" name="sales_notes" id="sales_notes" class="form-control" value="{{ old('sales_notes') }}" placeholder="e.g. Paid via Party A agent, transaction ref #12345">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <hr class="my-4">
@@ -218,6 +305,31 @@
 
     <!-- Dynamic Tehsil -> UC and Independent Toggle JS -->
     <script>
+        function updateDefaultPrice(selectEl) {
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            const defaultPrice = selectedOption.getAttribute('data-price');
+            if (defaultPrice) {
+                const saleInput = document.getElementById('sale_amount');
+                if (saleInput) saleInput.value = parseFloat(defaultPrice).toFixed(0);
+                const statusSelect = document.getElementById('payment_status');
+                if (statusSelect && statusSelect.value === 'paid') {
+                    const paidInput = document.getElementById('amount_paid');
+                    if (paidInput) paidInput.value = parseFloat(defaultPrice).toFixed(0);
+                }
+            }
+        }
+
+        function syncPaymentStatus(status) {
+            const saleAmount = document.getElementById('sale_amount')?.value || 20000;
+            const paidInput = document.getElementById('amount_paid');
+            if (!paidInput) return;
+            if (status === 'paid') {
+                paidInput.value = saleAmount;
+            } else if (status === 'pending') {
+                paidInput.value = 0;
+            }
+        }
+
         function toggleIndependent(val) {
             const indCheck = document.getElementById('is_independent');
             if (val === 'Independent' || val === 'Azad') {

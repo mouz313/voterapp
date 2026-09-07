@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\BlockCode;
 use App\Models\CandidateDevice;
+use App\Models\CandidateSale;
 use App\Models\District;
 use App\Models\PollingStation;
+use App\Models\SalesParty;
 use App\Models\SearchLog;
 use App\Models\Tehsil;
 use App\Models\UC;
@@ -24,7 +26,7 @@ class CandidatesController extends Controller
         $ucs = UC::with('tehsil.district')->orderBy('name')->get();
 
         $candidates = User::where('role', 'candidate')
-            ->with(['uc.tehsil.district', 'devices'])
+            ->with(['uc.tehsil.district', 'devices', 'sale.party'])
             ->withCount(['devices as active_devices_count' => fn ($q) => $q->where('is_revoked', false)])
             ->when($request->query('uc_id'), fn ($q, $ucId) => $q->where('uc_id', $ucId))
             ->when($request->query('status'), fn ($q, $st) => $q->where('status', $st))
@@ -50,8 +52,9 @@ class CandidatesController extends Controller
             ->orderByRaw('CAST(uc_no AS UNSIGNED) ASC')
             ->orderBy('name')
             ->get();
+        $salesParties = SalesParty::where('is_active', true)->orderBy('name')->get();
 
-        return view('candidates.create', compact('tehsils', 'ucs'));
+        return view('candidates.create', compact('tehsils', 'ucs', 'salesParties'));
     }
 
     public function store(Request $request)
@@ -71,6 +74,13 @@ class CandidatesController extends Controller
             'party_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_symbol_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
+            'sales_party_id' => 'nullable|exists:sales_parties,id',
+            'sale_amount' => 'nullable|numeric|min:0',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'payment_status' => 'nullable|in:paid,pending,partial',
+            'payment_method' => 'nullable|string|max:50',
+            'payment_date' => 'nullable|date',
+            'sales_notes' => 'nullable|string|max:500',
         ]);
 
         $validated['role'] = 'candidate';
@@ -99,10 +109,33 @@ class CandidatesController extends Controller
             $validated['candidate_symbol_image'] = 'uploads/branding/' . $name;
         }
 
-        User::create($validated);
+        $user = User::create($validated);
+
+        // Record Candidate App License Sale
+        $partyId = $request->input('sales_party_id');
+        $saleAmountInput = $request->input('sale_amount');
+
+        if (!empty($partyId) || $saleAmountInput !== null) {
+            $saleAmount = $saleAmountInput !== null ? (float) $saleAmountInput : 20000.00;
+            $paymentStatus = $request->input('payment_status', 'paid') ?: 'paid';
+            $amountPaid = $request->filled('amount_paid')
+                ? (float) $request->input('amount_paid')
+                : ($paymentStatus === 'paid' ? $saleAmount : 0.00);
+
+            CandidateSale::create([
+                'candidate_id' => $user->id,
+                'sales_party_id' => $partyId ?: null,
+                'sale_amount' => $saleAmount,
+                'amount_paid' => $amountPaid,
+                'payment_status' => $paymentStatus,
+                'payment_method' => $request->input('payment_method', 'Cash') ?: 'Cash',
+                'payment_date' => $request->input('payment_date') ?: now()->toDateString(),
+                'notes' => $request->input('sales_notes'),
+            ]);
+        }
 
         return redirect()->route('candidates.index')
-            ->with('toast', ['type' => 'success', 'message' => 'Candidate account created successfully with party branding.']);
+            ->with('toast', ['type' => 'success', 'message' => 'Candidate account created successfully with party branding & sales record.']);
     }
 
     public function edit(User $candidate)
@@ -111,14 +144,16 @@ class CandidatesController extends Controller
             abort(404);
         }
 
+        $candidate->load('sale.party');
         $tehsils = Tehsil::with('district')->orderBy('name')->get();
         $ucs = UC::with(['tehsil.district', 'provincialAssembly', 'nationalAssembly'])
             ->orderBy('tehsil_id')
             ->orderByRaw('CAST(uc_no AS UNSIGNED) ASC')
             ->orderBy('name')
             ->get();
+        $salesParties = SalesParty::where('is_active', true)->orderBy('name')->get();
 
-        return view('candidates.edit', compact('candidate', 'tehsils', 'ucs'));
+        return view('candidates.edit', compact('candidate', 'tehsils', 'ucs', 'salesParties'));
     }
 
     public function update(Request $request, User $candidate)
@@ -142,6 +177,13 @@ class CandidatesController extends Controller
             'party_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_symbol_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
+            'sales_party_id' => 'nullable|exists:sales_parties,id',
+            'sale_amount' => 'nullable|numeric|min:0',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'payment_status' => 'nullable|in:paid,pending,partial',
+            'payment_method' => 'nullable|string|max:50',
+            'payment_date' => 'nullable|date',
+            'sales_notes' => 'nullable|string|max:500',
         ]);
 
         if (!empty($validated['password'])) {
@@ -176,8 +218,33 @@ class CandidatesController extends Controller
 
         $candidate->update($validated);
 
+        // Update or Create Candidate App License Sale
+        $partyId = $request->input('sales_party_id');
+        $saleAmountInput = $request->input('sale_amount');
+
+        if (!empty($partyId) || $saleAmountInput !== null) {
+            $saleAmount = $saleAmountInput !== null ? (float) $saleAmountInput : 20000.00;
+            $paymentStatus = $request->input('payment_status', 'paid') ?: 'paid';
+            $amountPaid = $request->filled('amount_paid')
+                ? (float) $request->input('amount_paid')
+                : ($paymentStatus === 'paid' ? $saleAmount : 0.00);
+
+            CandidateSale::updateOrCreate(
+                ['candidate_id' => $candidate->id],
+                [
+                    'sales_party_id' => $partyId ?: null,
+                    'sale_amount' => $saleAmount,
+                    'amount_paid' => $amountPaid,
+                    'payment_status' => $paymentStatus,
+                    'payment_method' => $request->input('payment_method', 'Cash') ?: 'Cash',
+                    'payment_date' => $request->input('payment_date') ?: now()->toDateString(),
+                    'notes' => $request->input('sales_notes'),
+                ]
+            );
+        }
+
         return redirect()->route('candidates.index')
-            ->with('toast', ['type' => 'success', 'message' => 'Candidate branding and account updated successfully.']);
+            ->with('toast', ['type' => 'success', 'message' => 'Candidate branding, account and sales record updated successfully.']);
     }
 
     public function destroy(User $candidate)
@@ -243,6 +310,7 @@ class CandidatesController extends Controller
             'uc.nationalAssembly',
             'uc.provincialAssembly',
             'devices' => fn ($q) => $q->orderBy('last_active_at', 'desc'),
+            'sale.party',
         ]);
 
         $totalUcVoters = $candidate->uc_id ? Voter::where('uc_id', $candidate->uc_id)->count() : 0;
@@ -306,6 +374,7 @@ class CandidatesController extends Controller
             'uc.nationalAssembly',
             'uc.provincialAssembly',
             'devices' => fn ($q) => $q->orderBy('last_active_at', 'desc'),
+            'sale.party',
         ]);
 
         $totalUcVoters = $candidate->uc_id ? Voter::where('uc_id', $candidate->uc_id)->count() : 0;

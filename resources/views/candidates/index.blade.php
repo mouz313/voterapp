@@ -53,6 +53,7 @@
                         <th>Candidate Profile</th>
                         <th>Party & Nishan</th>
                         <th>Assigned UC</th>
+                        <th>App Sale / Party</th>
                         <th>Active Devices</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -108,6 +109,31 @@
                                 @endif
                             </td>
                             <td>
+                                @if($candidate->sale)
+                                    <div>
+                                        <span class="badge bg-dark-subtle text-dark border font-mono">
+                                            <i class="bi bi-shop me-1 text-primary"></i>{{ $candidate->sale->party->name ?? 'Direct' }}
+                                        </span>
+                                        <div class="small fw-bold text-dark mt-1 font-mono">PKR {{ number_format($candidate->sale->sale_amount) }}</div>
+                                        @if($candidate->sale->payment_status === 'paid')
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1" style="font-size: 0.72rem;">
+                                                <i class="bi bi-check-circle-fill me-1"></i>Paid
+                                            </span>
+                                        @elseif($candidate->sale->payment_status === 'partial')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-0 px-1" style="font-size: 0.72rem;">
+                                                <i class="bi bi-clock-history me-1"></i>Partial ({{ number_format($candidate->sale->amount_paid) }})
+                                            </span>
+                                        @else
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-0 px-1" style="font-size: 0.72rem;">
+                                                <i class="bi bi-exclamation-circle-fill me-1"></i>Unpaid
+                                            </span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="badge bg-light text-muted border font-mono">Not Linked</span>
+                                @endif
+                            </td>
+                            <td>
                                 <a href="{{ route('candidates.devices', $candidate) }}" class="text-decoration-none">
                                     <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 font-mono">
                                         <i class="bi bi-phone me-1"></i>{{ $candidate->active_devices_count }} Active (Unlimited)
@@ -133,7 +159,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">No candidates registered yet. Click <strong>Register Candidate</strong> above to add one.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">No candidates registered yet. Click <strong>Register Candidate</strong> above to add one.</td></tr>
                     @endforelse
                 </tbody>
             </table>

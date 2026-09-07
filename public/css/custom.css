@@ -39,7 +39,12 @@
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+html, body {
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip !important;
+}
 
 body {
     margin: 0;
@@ -68,6 +73,10 @@ a { text-decoration: none; }
     border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow-xs);
     z-index: 1040;
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
 }
 .app-header .navbar-brand {
     color: var(--text);
@@ -96,9 +105,28 @@ a { text-decoration: none; }
 
 /* ---------- Layout ---------- */
 .app-body {
-    display: flex;
+    display: block;
     padding-top: var(--header-height);
     min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip !important;
+    position: relative;
+}
+
+/* Smooth scrollable finance tabs bar */
+.finance-nav-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.finance-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+.finance-nav-scroll .nav-tabs {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    min-width: max-content;
 }
 
 /* ---------- Sidebar ---------- */
@@ -159,17 +187,23 @@ body.sidebar-collapsed .sidebar-brand span:not(.brand-logo) { display: none; }
 body.sidebar-collapsed .sidebar-heading { display: none; }
 body.sidebar-collapsed .sidebar-link { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
 body.sidebar-collapsed .sidebar-link span { display: none; }
-body.sidebar-collapsed .app-main { margin-left: var(--sidebar-collapsed-width); }
+body.sidebar-collapsed .app-main {
+    margin-left: var(--sidebar-collapsed-width);
+    width: calc(100% - var(--sidebar-collapsed-width));
+    max-width: calc(100% - var(--sidebar-collapsed-width));
+}
 
 /* ---------- Main Container ---------- */
 .app-main {
-    flex: 1;
     margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    max-width: calc(100% - var(--sidebar-width));
     display: flex; flex-direction: column;
     min-height: calc(100vh - var(--header-height));
-    transition: margin-left 0.2s ease;
+    transition: margin-left 0.2s ease, width 0.2s ease, max-width 0.2s ease;
+    overflow-x: clip !important;
 }
-.app-main .container-fluid { flex: 1; max-width: 1440px; }
+.app-main .container-fluid { flex: 1; width: 100%; max-width: 100%; }
 
 /* ---------- Footer ---------- */
 .app-footer {
@@ -192,6 +226,46 @@ body.sidebar-collapsed .app-main { margin-left: var(--sidebar-collapsed-width); 
     box-shadow: var(--shadow-xs);
     background: var(--surface);
 }
+
+/* Card Left Accent Borders - Clean, elegant 3.5px line without coloring other borders */
+.card-accent-primary, .card.border-start.border-primary, .stat-card.border-start.border-primary {
+    border-left: 4px solid var(--brand) !important;
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.card-accent-info, .card.border-start.border-info, .stat-card.border-start.border-info {
+    border-left: 4px solid #0284c7 !important;
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.card-accent-success, .card.border-start.border-success, .stat-card.border-start.border-success {
+    border-left: 4px solid #059669 !important;
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.card-accent-warning, .card.border-start.border-warning, .stat-card.border-start.border-warning {
+    border-left: 4px solid #d97706 !important;
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.card-accent-danger, .card.border-start.border-danger, .stat-card.border-start.border-danger {
+    border-left: 4px solid #dc2626 !important;
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.stat-card.border-start, .card.border-start {
+    border-top: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-left-width: 4px !important;
+}
+
 .card-header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
