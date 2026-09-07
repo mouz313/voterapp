@@ -187,8 +187,19 @@
                                                     </select>
                                                 </div>
                                                 <div class="col-6">
-                                                    <label class="form-label small fw-semibold">Profit Share (%) <span class="text-danger">*</span></label>
-                                                    <input type="number" name="profit_share_pct" value="{{ $p->profit_share_pct }}" class="form-control form-control-sm font-mono" min="0" max="100" step="0.5" required>
+                                                    @php
+                                                        $currAssigned = $p->is_active ? (float)$p->profit_share_pct : 0;
+                                                        $othersAssigned = (float)$totalProfitPctAssigned - $currAssigned;
+                                                        $maxCap = max(0, round(100 - $othersAssigned, 2));
+                                                    @endphp
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <label class="form-label small fw-semibold mb-0">Profit Share (%) <span class="text-danger">*</span></label>
+                                                        <span class="badge bg-light text-primary border font-mono" style="font-size: 0.65rem;" title="Max capacity for this partner">
+                                                            Max: {{ $maxCap }}%
+                                                        </span>
+                                                    </div>
+                                                    <input type="number" name="profit_share_pct" value="{{ $p->profit_share_pct }}" class="form-control form-control-sm font-mono" min="0" max="{{ $maxCap }}" step="0.1" required>
+                                                    <small class="text-muted" style="font-size: 0.68rem;">Is partner k liye max: <strong>{{ $maxCap }}%</strong></small>
                                                 </div>
                                             </div>
                                             <div class="row g-2 mb-2">
@@ -273,8 +284,17 @@
                                 </select>
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-semibold">Profit Share (%) <span class="text-danger">*</span></label>
-                                <input type="number" name="profit_share_pct" value="25" class="form-control form-control-sm font-mono" min="0" max="100" step="0.5" required>
+                                @php
+                                    $addMaxCap = max(0, round(100 - $totalProfitPctAssigned, 2));
+                                @endphp
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small fw-semibold mb-0">Profit Share (%) <span class="text-danger">*</span></label>
+                                    <span class="badge bg-light text-primary border font-mono" style="font-size: 0.65rem;" title="Available percentage capacity">
+                                        Max: {{ $addMaxCap }}%
+                                    </span>
+                                </div>
+                                <input type="number" name="profit_share_pct" value="{{ min(10, $addMaxCap) }}" class="form-control form-control-sm font-mono" min="0" max="{{ $addMaxCap }}" step="0.1" required>
+                                <small class="text-muted" style="font-size: 0.68rem;">Gunjaish (Remaining): <strong>{{ $addMaxCap }}%</strong></small>
                             </div>
                         </div>
                         <div class="row g-2 mb-2">

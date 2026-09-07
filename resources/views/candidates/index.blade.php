@@ -76,6 +76,11 @@
                                             {{ $candidate->name }}
                                         </a>
                                         <small class="text-muted d-block"><i class="bi bi-envelope me-1"></i>{{ $candidate->email }}</small>
+                                        @if($candidate->candidate_code)
+                                            <span class="badge bg-dark text-white font-monospace mt-1" style="letter-spacing: 0.5px;">
+                                                <i class="bi bi-key-fill text-warning me-1"></i>{{ $candidate->candidate_code }}
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

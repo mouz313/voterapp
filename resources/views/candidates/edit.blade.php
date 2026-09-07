@@ -131,6 +131,48 @@
                                             @enderror
                                         </div>
 
+                                        <!-- Candidate Campaign Code -->
+                                        <div class="col-md-6">
+                                            <label for="candidate_code" class="form-label fw-semibold">
+                                                Candidate Campaign Code 
+                                                <span class="badge bg-primary-subtle text-primary">For Mobile Staff Login</span>
+                                            </label>
+                                            <input type="text" name="candidate_code" id="candidate_code" class="form-control @error('candidate_code') is-invalid @enderror" value="{{ old('candidate_code', $candidate->candidate_code) }}" placeholder="e.g. PTI-4821">
+                                            <small class="text-muted">Workers enter this code on the mobile app to morph theme and verify campaign.</small>
+                                            @error('candidate_code')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Party Slogan / Tagline -->
+                                        <div class="col-md-6">
+                                            <label for="party_slogan" class="form-label fw-semibold">Party Slogan / Tagline (Naara)</label>
+                                            <input type="text" name="party_slogan" id="party_slogan" class="form-control @error('party_slogan') is-invalid @enderror" value="{{ old('party_slogan', $candidate->party_slogan) }}" placeholder="e.g. Do Nahin Aik Pakistan">
+                                            <small class="text-muted">Shows boldly on the mobile login screen and war-room header.</small>
+                                            @error('party_slogan')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Supreme Leader Photo Upload & Preview -->
+                                        <div class="col-md-6">
+                                            <label for="leader_image" class="form-label fw-semibold">
+                                                Supreme Leader Photo (Qaid Ki Tasweer)
+                                                <span class="badge bg-info-subtle text-info-emphasis">Mobile App Header</span>
+                                            </label>
+                                            @if ($candidate->leader_image)
+                                                <div class="mb-2">
+                                                    <img src="{{ asset($candidate->leader_image) }}" alt="Supreme Leader" class="rounded border shadow-sm" style="max-height: 70px; object-fit: contain;">
+                                                    <span class="badge bg-secondary ms-1">Current Leader Photo</span>
+                                                </div>
+                                            @endif
+                                            <input type="file" name="leader_image" id="leader_image" class="form-control @error('leader_image') is-invalid @enderror" accept="image/*">
+                                            <small class="text-muted">Upload new portrait photo to replace</small>
+                                            @error('leader_image')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
                                         <!-- Candidate Symbol Image Upload & Preview -->
                                         <div class="col-md-6">
                                             <label for="candidate_symbol_image" class="form-label fw-semibold">Electoral Symbol Logo / Nishan Image</label>

@@ -124,15 +124,51 @@
                                             @enderror
                                         </div>
 
-                                        <!-- Candidate Symbol Image (Nishan Logo) Upload -->
-                                        <div class="col-md-6">
-                                            <label for="candidate_symbol_image" class="form-label fw-semibold">Electoral Symbol Logo / Nishan Image</label>
-                                            <input type="file" name="candidate_symbol_image" id="candidate_symbol_image" class="form-control @error('candidate_symbol_image') is-invalid @enderror" accept="image/*">
-                                            <small class="text-muted">Upload symbol logo graphic (e.g. Bat/Lion/Arrow icon)</small>
-                                            @error('candidate_symbol_image')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
+                                         <!-- Candidate Campaign Code -->
+                                         <div class="col-md-6">
+                                             <label for="candidate_code" class="form-label fw-semibold">
+                                                 Candidate Campaign Code 
+                                                 <span class="badge bg-primary-subtle text-primary">For Mobile Staff Login</span>
+                                             </label>
+                                             <input type="text" name="candidate_code" id="candidate_code" class="form-control @error('candidate_code') is-invalid @enderror" value="{{ old('candidate_code') }}" placeholder="Auto-generated if left blank (e.g. PTI-4821)">
+                                             <small class="text-muted">Workers use this unique code along with their 4-digit PIN to login to the app.</small>
+                                             @error('candidate_code')
+                                                 <div class="invalid-feedback">{{ $message }}</div>
+                                             @enderror
+                                         </div>
+
+                                         <!-- Party Slogan / Tagline -->
+                                         <div class="col-md-6">
+                                             <label for="party_slogan" class="form-label fw-semibold">Party Slogan / Tagline (Naara)</label>
+                                             <input type="text" name="party_slogan" id="party_slogan" class="form-control @error('party_slogan') is-invalid @enderror" value="{{ old('party_slogan') }}" placeholder="e.g. Do Nahin Aik Pakistan / Khidmat Ko Vote Do / Roti Kapra Aur Makaan">
+                                             <small class="text-muted">Shows boldly on the mobile login screen and war-room header.</small>
+                                             @error('party_slogan')
+                                                 <div class="invalid-feedback">{{ $message }}</div>
+                                             @enderror
+                                         </div>
+
+                                         <!-- Supreme Leader Photo Upload -->
+                                         <div class="col-md-6">
+                                             <label for="leader_image" class="form-label fw-semibold">
+                                                 Supreme Leader Photo (Qaid Ki Tasweer)
+                                                 <span class="badge bg-info-subtle text-info-emphasis">Mobile App Header</span>
+                                             </label>
+                                             <input type="file" name="leader_image" id="leader_image" class="form-control @error('leader_image') is-invalid @enderror" accept="image/*">
+                                             <small class="text-muted">Leader portrait shown on the worker mobile login screen.</small>
+                                             @error('leader_image')
+                                                 <div class="invalid-feedback">{{ $message }}</div>
+                                             @enderror
+                                         </div>
+
+                                         <!-- Candidate Symbol Image (Nishan Logo) Upload -->
+                                         <div class="col-md-6">
+                                             <label for="candidate_symbol_image" class="form-label fw-semibold">Electoral Symbol Logo / Nishan Image</label>
+                                             <input type="file" name="candidate_symbol_image" id="candidate_symbol_image" class="form-control @error('candidate_symbol_image') is-invalid @enderror" accept="image/*">
+                                             <small class="text-muted">Upload symbol logo graphic (e.g. Bat/Lion/Arrow icon)</small>
+                                             @error('candidate_symbol_image')
+                                                 <div class="invalid-feedback">{{ $message }}</div>
+                                             @enderror
+                                         </div>
                                     </div>
                                 </div>
                             </div>

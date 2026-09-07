@@ -69,11 +69,14 @@ class CandidatesController extends Controller
             'status' => 'required|in:active,suspended',
             'expires_at' => 'nullable|date',
             'party_name' => 'nullable|string|max:255',
+            'candidate_code' => 'nullable|string|max:50|unique:users,candidate_code',
+            'party_slogan' => 'nullable|string|max:255',
             'is_independent' => 'nullable|boolean',
             'candidate_symbol' => 'nullable|string|max:255',
             'party_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_symbol_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
+            'leader_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'sales_party_id' => 'nullable|exists:sales_parties,id',
             'sale_amount' => 'nullable|numeric|min:0',
             'amount_paid' => 'nullable|numeric|min:0',
@@ -87,6 +90,12 @@ class CandidatesController extends Controller
         $validated['password'] = Hash::make($validated['password']);
         $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : null;
         $validated['is_independent'] = $request->has('is_independent') || ($request->party_name === 'Independent' || $request->party_name === 'Azad');
+
+        if (empty($validated['candidate_code'])) {
+            $validated['candidate_code'] = User::generateUniqueCandidateCode($validated['party_name'] ?? null);
+        } else {
+            $validated['candidate_code'] = strtoupper(trim($validated['candidate_code']));
+        }
 
         if ($request->hasFile('party_logo')) {
             $file = $request->file('party_logo');
@@ -107,6 +116,13 @@ class CandidatesController extends Controller
             $name = 'symbol_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $file->move(public_path('uploads/branding'), $name);
             $validated['candidate_symbol_image'] = 'uploads/branding/' . $name;
+        }
+
+        if ($request->hasFile('leader_image')) {
+            $file = $request->file('leader_image');
+            $name = 'leader_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/branding'), $name);
+            $validated['leader_image'] = 'uploads/branding/' . $name;
         }
 
         $user = User::create($validated);
@@ -172,11 +188,14 @@ class CandidatesController extends Controller
             'status' => 'required|in:active,suspended',
             'expires_at' => 'nullable|date',
             'party_name' => 'nullable|string|max:255',
+            'candidate_code' => 'nullable|string|max:50|unique:users,candidate_code,' . $candidate->id,
+            'party_slogan' => 'nullable|string|max:255',
             'is_independent' => 'nullable|boolean',
             'candidate_symbol' => 'nullable|string|max:255',
             'party_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'candidate_symbol_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
+            'leader_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'sales_party_id' => 'nullable|exists:sales_parties,id',
             'sale_amount' => 'nullable|numeric|min:0',
             'amount_paid' => 'nullable|numeric|min:0',
@@ -194,6 +213,10 @@ class CandidatesController extends Controller
 
         $validated['max_devices'] = !empty($validated['max_devices']) ? (int) $validated['max_devices'] : null;
         $validated['is_independent'] = $request->has('is_independent') || ($request->party_name === 'Independent' || $request->party_name === 'Azad');
+
+        if (!empty($validated['candidate_code'])) {
+            $validated['candidate_code'] = strtoupper(trim($validated['candidate_code']));
+        }
 
         if ($request->hasFile('party_logo')) {
             $file = $request->file('party_logo');
@@ -214,6 +237,13 @@ class CandidatesController extends Controller
             $name = 'symbol_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $file->move(public_path('uploads/branding'), $name);
             $validated['candidate_symbol_image'] = 'uploads/branding/' . $name;
+        }
+
+        if ($request->hasFile('leader_image')) {
+            $file = $request->file('leader_image');
+            $name = 'leader_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/branding'), $name);
+            $validated['leader_image'] = 'uploads/branding/' . $name;
         }
 
         $candidate->update($validated);

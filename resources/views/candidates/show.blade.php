@@ -65,6 +65,12 @@
                             <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="bi bi-flag-fill me-1"></i>{{ $candidate->party_name }}</span>
                         @endif
 
+                        @if ($candidate->candidate_code)
+                            <span class="badge bg-dark text-white font-monospace px-2 py-1" style="letter-spacing: 0.5px;">
+                                <i class="bi bi-key-fill text-warning me-1"></i>Campaign Code: {{ $candidate->candidate_code }}
+                            </span>
+                        @endif
+
                         @if ($candidate->expires_at)
                             @php
                                 $daysLeft = now()->diffInDays($candidate->expires_at, false);
@@ -79,6 +85,12 @@
                         @endif
                     </div>
 
+                    @if ($candidate->party_slogan)
+                        <div class="small fw-semibold text-secondary fst-italic mt-1">
+                            <i class="bi bi-quote text-primary me-1"></i>{{ $candidate->party_slogan }}
+                        </div>
+                    @endif
+
                     <div class="text-muted small d-flex flex-wrap gap-3 mt-2">
                         <span><i class="bi bi-envelope me-1 text-primary"></i>{{ $candidate->email }}</span>
                         @if ($candidate->phone)
@@ -91,6 +103,13 @@
 
                 <!-- Party & Symbol Branding Column -->
                 <div class="col-auto d-flex align-items-center gap-3 border-start ps-4">
+                    @if ($candidate->leader_image && file_exists(public_path($candidate->leader_image)))
+                        <div class="text-center">
+                            <div class="small text-muted mb-1" style="font-size: 0.72rem;">SUPREME LEADER</div>
+                            <img src="{{ asset($candidate->leader_image) }}" alt="Leader" class="rounded-circle border p-1 bg-white shadow-sm" style="width: 52px; height: 52px; object-fit: cover;">
+                        </div>
+                    @endif
+
                     @if ($candidate->candidate_symbol_image && file_exists(public_path($candidate->candidate_symbol_image)))
                         <div class="text-center">
                             <div class="small text-muted mb-1" style="font-size: 0.72rem;">ELECTION SYMBOL</div>

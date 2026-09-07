@@ -332,9 +332,30 @@ class FinanceController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $isActive = $request->has('is_active');
+        $requestedPct = (float) $validated['profit_share_pct'];
+
+        // Percentage Sum Validation: Combined active partners must not exceed 100%
+        if ($isActive) {
+            $existingTotal = (float) Partner::where('is_active', true)->sum('profit_share_pct');
+            $availableCapacity = max(0.0, round(100.0 - $existingTotal, 2));
+
+            if (round($existingTotal + $requestedPct, 2) > 100.0) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'profit_share_pct' => "Tamam partners ka kul profit share 100% se zyada nahi ho sakta. Pehle se {$existingTotal}% assigned hai, baki sirf {$availableCapacity}% gunjaish mojood hai.",
+                    ])
+                    ->with('toast', [
+                        'type' => 'error',
+                        'message' => "Total Profit Share cannot exceed 100%! Only {$availableCapacity}% available.",
+                    ]);
+            }
+        }
+
         $validated['sales_party_id'] = $request->filled('sales_party_id') ? $request->input('sales_party_id') : null;
         $validated['invested_capital'] = $validated['invested_capital'] ?? 0.00;
-        $validated['is_active'] = $request->has('is_active');
+        $validated['is_active'] = $isActive;
 
         Partner::create($validated);
 
@@ -358,9 +379,32 @@ class FinanceController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $isActive = $request->has('is_active');
+        $requestedPct = (float) $validated['profit_share_pct'];
+
+        // Percentage Sum Validation: Combined active partners must not exceed 100% (excluding current partner)
+        if ($isActive) {
+            $existingTotal = (float) Partner::where('is_active', true)
+                ->where('id', '!=', $partner->id)
+                ->sum('profit_share_pct');
+            $availableCapacity = max(0.0, round(100.0 - $existingTotal, 2));
+
+            if (round($existingTotal + $requestedPct, 2) > 100.0) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'profit_share_pct' => "Tamam partners ka kul profit share 100% se zyada nahi ho sakta. Baki partners ko {$existingTotal}% assigned hai, is partner ke liye ziada se ziada {$availableCapacity}% ki gunjaish hai.",
+                    ])
+                    ->with('toast', [
+                        'type' => 'error',
+                        'message' => "Total Profit Share cannot exceed 100%! Only {$availableCapacity}% available for this partner.",
+                    ]);
+            }
+        }
+
         $validated['sales_party_id'] = $request->filled('sales_party_id') ? $request->input('sales_party_id') : null;
         $validated['invested_capital'] = $validated['invested_capital'] ?? 0.00;
-        $validated['is_active'] = $request->has('is_active');
+        $validated['is_active'] = $isActive;
 
         $partner->update($validated);
 

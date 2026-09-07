@@ -151,6 +151,20 @@
                     </div>
                 @endif
 
+                @if ($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show small" role="alert">
+                        <div class="d-flex align-items-center gap-1.5 fw-bold">
+                            <i class="bi bi-exclamation-triangle-fill"></i> Validation Error
+                        </div>
+                        <ul class="mb-0 mt-1 ps-3">
+                            @foreach ($errors->all() as $err)
+                                <li>{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
                 @yield('content')
             </div>
 

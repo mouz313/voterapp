@@ -16,6 +16,7 @@ use Illuminate\Notifications\Notifiable;
 #[Fillable([
     'name',
     'email',
+    'candidate_code',
     'password',
     'role',
     'uc_id',
@@ -26,15 +27,40 @@ use Illuminate\Notifications\Notifiable;
     'party_name',
     'is_independent',
     'candidate_symbol',
+    'party_slogan',
     'party_logo',
     'candidate_image',
     'candidate_symbol_image',
+    'leader_image',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if ($user->role === 'candidate' && empty($user->candidate_code)) {
+                $user->candidate_code = static::generateUniqueCandidateCode($user->party_name);
+            }
+        });
+    }
+
+    public static function generateUniqueCandidateCode(?string $partyName = null): string
+    {
+        $prefix = 'CAN';
+        if (!empty($partyName)) {
+            $clean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $partyName));
+            $prefix = substr($clean, 0, 3) ?: 'CAN';
+        }
+        do {
+            $code = $prefix . '-' . mt_rand(1000, 9999);
+        } while (static::where('candidate_code', $code)->exists());
+
+        return $code;
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -65,6 +91,21 @@ class User extends Authenticatable
     public function getCandidateSymbolImageUrlAttribute(): ?string
     {
         return $this->candidate_symbol_image ? asset($this->candidate_symbol_image) : null;
+    }
+
+    public function getLeaderImageUrlAttribute(): ?string
+    {
+        return $this->leader_image ? asset($this->leader_image) : null;
+    }
+
+    public function campaignWorkers(): HasMany
+    {
+        return $this->hasMany(CampaignWorker::class, 'candidate_id');
+    }
+
+    public function gharanaSurveys(): HasMany
+    {
+        return $this->hasMany(GharanaSurvey::class, 'candidate_id');
     }
 
     public function uc(): BelongsTo
