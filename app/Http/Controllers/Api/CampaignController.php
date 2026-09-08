@@ -278,7 +278,7 @@ class CampaignController extends Controller
     {
         $candidate = $this->getAuthenticatedCandidate($request);
         if (!$candidate) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated candidate.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated candidate.'], 401);
         }
 
         // Handle POST: Create new worker
@@ -306,8 +306,10 @@ class CampaignController extends Controller
 
             return response()->json([
                 'success' => true,
+                'status' => true,
                 'message' => "Worker [{$worker->name}] created successfully.",
                 'worker' => $worker,
+                'data' => $worker,
                 'plain_pin' => $pin,
                 'whatsapp_message' => "Salam {$worker->name}! VoterApp Campaign login details:\nCandidate Code: {$candidate->candidate_code}\nWorker PIN: {$pin}\nAssigned Block: {$worker->assigned_block_code}",
                 'whatsapp_share_url' => "https://wa.me/?text=" . $shareText,
@@ -330,9 +332,9 @@ class CampaignController extends Controller
                     'pin' => '****',
                     'assigned_block_code' => $w->assigned_block_code,
                     'device_uid' => $w->device_uid,
-                    'is_active' => $w->is_active,
-                    'visited_count' => $w->visited_count,
-                    'pakka_count' => $w->pakka_count,
+                    'is_active' => (bool) $w->is_active,
+                    'visited_count' => (int) $w->visited_count,
+                    'pakka_count' => (int) $w->pakka_count,
                     'last_sync_at' => $w->last_sync_at ? $w->last_sync_at->diffForHumans() : 'Never',
                     'is_idle' => $w->last_sync_at ? $w->last_sync_at->diffInHours(now()) >= 3 : true,
                     'whatsapp_text' => "Salam {$w->name}! VoterApp details: Candidate Code: {$candidate->candidate_code} | Block: {$w->assigned_block_code}",
@@ -341,7 +343,15 @@ class CampaignController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => true,
             'workers' => $workers,
+            'data' => $workers,
+            'candidate' => [
+                'id' => $candidate->id,
+                'name' => $candidate->name,
+                'candidate_code' => $candidate->candidate_code,
+                'party_name' => $candidate->party_name,
+            ],
         ]);
     }
 
@@ -352,7 +362,7 @@ class CampaignController extends Controller
     {
         $candidate = $this->getAuthenticatedCandidate($request);
         if (!$candidate) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated candidate.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated candidate.'], 401);
         }
 
         $worker = CampaignWorker::where('candidate_id', $candidate->id)->findOrFail($id);
@@ -369,8 +379,10 @@ class CampaignController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => true,
             'message' => "Worker [{$worker->name}] updated successfully.",
             'worker' => $worker,
+            'data' => $worker,
         ]);
     }
 
@@ -381,7 +393,7 @@ class CampaignController extends Controller
     {
         $candidate = $this->getAuthenticatedCandidate($request);
         if (!$candidate) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated candidate.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated candidate.'], 401);
         }
 
         $worker = CampaignWorker::where('candidate_id', $candidate->id)->findOrFail($id);
@@ -389,6 +401,7 @@ class CampaignController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => true,
             'message' => 'Worker removed successfully.',
         ]);
     }
@@ -401,7 +414,7 @@ class CampaignController extends Controller
     {
         $candidate = $this->getAuthenticatedCandidate($request);
         if (!$candidate) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated candidate.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated candidate.'], 401);
         }
 
         $ucId = $candidate->uc_id;
@@ -653,11 +666,62 @@ class CampaignController extends Controller
     }
 
     /**
-     * Authenticate field worker via Bearer token
+     * Extract token from any possible mobile header, query, or body field
+     */
+    protected function extractTokenFromRequest(Request $request): ?string
+    {
+        // 1. Standard Laravel bearer token
+        $token = $request->bearerToken();
+
+        // 2. Raw Authorization header (strip 'Bearer ' or 'bearer ' if present, or take raw)
+        if (!$token) {
+            $authHeader = $request->header('Authorization') 
+                ?? $request->header('authorization') 
+                ?? $request->server('HTTP_AUTHORIZATION')
+                ?? $request->server('REDIRECT_HTTP_AUTHORIZATION');
+
+            if ($authHeader) {
+                $token = preg_replace('/^\s*Bearer\s+/i', '', trim($authHeader));
+            }
+        }
+
+        // 3. Custom Headers commonly used in mobile clients
+        if (!$token) {
+            $token = $request->header('X-Device-Token')
+                ?? $request->header('X-Candidate-Token')
+                ?? $request->header('X-Worker-Token')
+                ?? $request->header('X-API-KEY')
+                ?? $request->header('X-Auth-Token')
+                ?? $request->header('token')
+                ?? $request->header('api-token')
+                ?? $request->header('device-token');
+        }
+
+        // 4. Query string or Request body parameters
+        if (!$token) {
+            $token = $request->input('token')
+                ?? $request->input('api_token')
+                ?? $request->input('device_token')
+                ?? $request->input('session_token')
+                ?? $request->query('token')
+                ?? $request->query('api_token')
+                ?? $request->query('device_token');
+        }
+
+        if ($token && is_string($token)) {
+            $token = trim($token, " \t\n\r\0\x0B\"'");
+            return $token !== '' ? $token : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Authenticate field worker via Bearer token, custom header, or input token
      */
     protected function getAuthenticatedWorker(Request $request): ?CampaignWorker
     {
-        $token = $request->bearerToken() ?: ($request->header('X-API-KEY') ?: $request->input('token'));
+        $token = $this->extractTokenFromRequest($request);
         if (!$token) {
             return null;
         }
@@ -671,45 +735,151 @@ class CampaignController extends Controller
     }
 
     /**
-     * Authenticate candidate via session, device bearer token, or candidate_code
+     * Authenticate candidate via session, device bearer token, worker token, candidate_code, or candidate_id
      */
     protected function getAuthenticatedCandidate(Request $request): ?User
     {
-        // 1. Session Auth
+        // 1. Session Auth (Web or WebView)
         if (auth()->check() && auth()->user()->isCandidate()) {
             return auth()->user();
         }
 
-        // 2. Candidate Device Bearer Token or X-API-KEY
-        $token = $request->bearerToken() ?: ($request->header('X-API-KEY') ?: $request->input('token'));
-        if ($token) {
-            $device = CandidateDevice::where(function ($q) use ($token) {
-                $q->where('api_token', $token)
-                  ->orWhere('api_token', hash('sha256', $token));
-            })
-            ->where('is_revoked', false)
-            ->first();
+        // 2. Check request attributes (if CandidateAuthMiddleware already resolved it)
+        if ($request->attributes->has('candidate_user')) {
+            $user = $request->attributes->get('candidate_user');
+            if ($user && $user->status === 'active') {
+                return $user;
+            }
+        }
+        if ($request->user() && method_exists($request->user(), 'isCandidate') && $request->user()->isCandidate() && $request->user()->status === 'active') {
+            return $request->user();
+        }
 
-            if ($device && $device->candidate) {
-                return $device->candidate;
+        // 3. Extract Token from all possible sources
+        $token = $this->extractTokenFromRequest($request);
+
+        if ($token) {
+            // 3a. Search CandidateDevice by api_token (raw or sha256)
+            $device = CandidateDevice::with(['candidate', 'user'])
+                ->where(function ($q) use ($token) {
+                    $q->where('api_token', $token)
+                      ->orWhere('api_token', hash('sha256', $token));
+                })
+                ->where('is_revoked', false)
+                ->first();
+
+            if ($device) {
+                $candidate = $device->candidate ?? $device->user;
+                if ($candidate && $candidate->status === 'active') {
+                    $device->update(['last_active_at' => now(), 'ip_address' => $request->ip()]);
+                    return $candidate;
+                }
+            }
+
+            // 3b. Search CampaignWorker by api_token (if staff token is passed to candidate screen)
+            $worker = CampaignWorker::with('candidate')
+                ->where(function ($q) use ($token) {
+                    $q->where('api_token', $token)
+                      ->orWhere('api_token', hash('sha256', $token));
+                })
+                ->where('is_active', true)
+                ->first();
+
+            if ($worker && $worker->candidate && $worker->candidate->status === 'active') {
+                return $worker->candidate;
+            }
+
+            // 3c. Direct candidate user token check (if token matches candidate_code directly)
+            $candidateByToken = User::where('role', 'candidate')
+                ->where('status', 'active')
+                ->where(function ($q) use ($token) {
+                    $q->where('candidate_code', strtoupper($token))
+                      ->orWhere('candidate_code', $token);
+                })
+                ->first();
+            if ($candidateByToken) {
+                return $candidateByToken;
             }
         }
 
-        // 3. Fallback: candidate_code directly passed by mobile app
-        if ($request->filled('candidate_code')) {
-            return User::where('candidate_code', strtoupper(trim($request->input('candidate_code'))))
-                ->where('role', 'candidate')
-                ->where('status', 'active')
+        // 4. Candidate Device UID fallback (from header, query, or body)
+        $deviceUid = $request->header('X-Device-UID') 
+            ?? $request->header('device-uid') 
+            ?? $request->header('device_uid') 
+            ?? $request->input('device_uid');
+
+        if ($deviceUid) {
+            $device = CandidateDevice::with(['candidate', 'user'])
+                ->where('device_uid', trim($deviceUid))
+                ->where('is_revoked', false)
                 ->first();
+
+            if ($device) {
+                $candidate = $device->candidate ?? $device->user;
+                if ($candidate && $candidate->status === 'active') {
+                    return $candidate;
+                }
+            }
         }
 
-        // 4. Fallback: candidate_id directly passed
-        if ($request->filled('candidate_id')) {
-            return User::where('id', $request->input('candidate_id'))
+        // 5. Fallback: candidate_code from headers, query, or body
+        $rawCode = $request->header('X-Candidate-Code')
+            ?? $request->header('candidate-code')
+            ?? $request->header('candidate_code')
+            ?? $request->input('candidate_code')
+            ?? $request->input('candidateCode')
+            ?? $request->input('code');
+
+        if ($rawCode && is_string($rawCode)) {
+            $cleanCode = strtoupper(trim($rawCode));
+            $candidate = User::where('role', 'candidate')
+                ->where('status', 'active')
+                ->where(function ($q) use ($cleanCode, $rawCode) {
+                    $q->where('candidate_code', $cleanCode)
+                      ->orWhere('candidate_code', trim($rawCode));
+                })
+                ->first();
+
+            if ($candidate) {
+                return $candidate;
+            }
+        }
+
+        // 6. Fallback: candidate_id / user_id from headers, query, or body
+        $candidateId = $request->header('X-Candidate-Id')
+            ?? $request->header('candidate-id')
+            ?? $request->header('candidate_id')
+            ?? $request->input('candidate_id')
+            ?? $request->input('candidateId')
+            ?? $request->input('user_id');
+
+        if ($candidateId && is_numeric($candidateId)) {
+            $candidate = User::where('id', $candidateId)
                 ->where('role', 'candidate')
                 ->where('status', 'active')
                 ->first();
+
+            if ($candidate) {
+                return $candidate;
+            }
         }
+
+        // 7. Log auth failure for debugging mobile app integration
+        \Illuminate\Support\Facades\Log::warning('Candidate authentication failed for endpoint', [
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'ip' => $request->ip(),
+            'headers' => [
+                'authorization' => $request->header('Authorization') ? 'PRESENT' : 'NONE',
+                'x-device-token' => $request->header('X-Device-Token'),
+                'x-candidate-token' => $request->header('X-Candidate-Token'),
+                'x-candidate-code' => $request->header('X-Candidate-Code'),
+                'x-candidate-id' => $request->header('X-Candidate-Id'),
+                'x-device-uid' => $request->header('X-Device-UID'),
+            ],
+            'query' => $request->query(),
+            'post' => $request->except(['password', 'pin']),
+        ]);
 
         return null;
     }
