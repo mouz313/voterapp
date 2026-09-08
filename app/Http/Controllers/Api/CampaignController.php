@@ -150,57 +150,110 @@ class CampaignController extends Controller
 
     /**
      * 3. Download Assigned Block Code Data for Offline Door-to-Door Walk
+     * Supports single or multiple assigned block codes (e.g. "185010401, 185010402")
+     * and optional query parameter ?block_code=... or ?block_codes=...
      */
     public function staffBlockData(Request $request): JsonResponse
     {
         $worker = $this->getAuthenticatedWorker($request);
         if (!$worker) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated staff member.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated staff member.'], 401);
         }
 
-        $blockCode = $worker->assigned_block_code;
+        // Determine target block codes:
+        // 1. From query parameter if worker / mobile app requests a specific block (?block_code=... or ?block_codes=...)
+        // 2. From worker's assigned_block_code (which could be single or comma-separated)
+        $requestedCodes = $request->query('block_codes') ?? $request->query('block_code');
+        $rawCodes = $requestedCodes ?: $worker->assigned_block_code;
 
-        // Find BlockCode model by code string
-        $block = BlockCode::where('code', $blockCode)->first();
-        $blockCodeId = $block ? $block->id : null;
+        $blockCodes = array_values(array_filter(array_map('trim', explode(',', (string) $rawCodes))));
 
-        // Fetch voters in this block code grouped by gharana_no
-        $voters = Voter::when($blockCodeId, fn ($q) => $q->where('block_code_id', $blockCodeId))
-            ->select('id', 'name', 'father_name', 'cnic', 'gharana_no', 'silsala_no', 'age', 'address')
+        if (empty($blockCodes)) {
+            return response()->json([
+                'success' => false,
+                'status' => false,
+                'message' => 'No block codes assigned to this staff member.',
+            ], 404);
+        }
+
+        // Find BlockCode models
+        $blockModels = BlockCode::whereIn('code', $blockCodes)->get();
+        $blockCodeIds = $blockModels->pluck('id')->toArray();
+        $blockIdToCodeMap = $blockModels->pluck('code', 'id')->toArray();
+
+        // Fetch voters across these block codes
+        $voters = Voter::whereIn('block_code_id', $blockCodeIds)
+            ->select('id', 'block_code_id', 'name', 'father_name', 'cnic', 'gharana_no', 'silsala_no', 'age', 'address')
+            ->orderBy('block_code_id')
             ->orderBy('gharana_no')
             ->orderBy('silsala_no')
-            ->get()
-            ->groupBy('gharana_no');
+            ->get();
 
-        // Fetch existing survey outcomes for this block under this candidate
+        // Fetch existing survey outcomes across these block codes under this candidate
         $surveys = GharanaSurvey::where('candidate_id', $worker->candidate_id)
-            ->where('block_code', $blockCode)
+            ->whereIn('block_code', $blockCodes)
             ->get()
-            ->keyBy('gharana_no');
+            ->keyBy(fn ($s) => $s->block_code . '_' . $s->gharana_no);
+
+        // Group voters by block_code + gharana_no
+        $grouped = $voters->groupBy(fn ($v) => ($blockIdToCodeMap[$v->block_code_id] ?? 'unknown') . '_' . $v->gharana_no);
 
         $gharanaList = [];
-        foreach ($voters as $gharanaNo => $familyVoters) {
-            $existing = $surveys->get($gharanaNo);
+        $blocksSummary = [];
+
+        foreach ($blockModels as $bModel) {
+            $blocksSummary[$bModel->code] = [
+                'code' => $bModel->code,
+                'area_name' => $bModel->area_name,
+                'total_voters' => 0,
+                'total_gharanas' => 0,
+            ];
+        }
+
+        foreach ($grouped as $key => $familyVoters) {
+            $firstVoter = $familyVoters->first();
+            $bCode = $blockIdToCodeMap[$firstVoter->block_code_id] ?? 'unknown';
+            $gharanaNo = (int) $firstVoter->gharana_no;
+
+            $surveyKey = $bCode . '_' . $gharanaNo;
+            $existing = $surveys->get($surveyKey);
+
+            if (isset($blocksSummary[$bCode])) {
+                $blocksSummary[$bCode]['total_voters'] += $familyVoters->count();
+                $blocksSummary[$bCode]['total_gharanas'] += 1;
+            }
+
             $gharanaList[] = [
-                'gharana_no' => (int) $gharanaNo,
+                'block_code' => $bCode,
+                'gharana_no' => $gharanaNo,
                 'voter_count' => $familyVoters->count(),
-                'head_name' => $familyVoters->first()->name ?? 'Family',
+                'head_name' => $firstVoter->name ?? 'Family',
                 'voters' => $familyVoters->values(),
                 'sentiment' => $existing ? $existing->sentiment : 'unassigned',
                 'notes' => $existing ? $existing->notes : null,
                 'influencer_name' => $existing ? $existing->influencer_name : null,
+                'is_vip_visit_requested' => $existing ? (bool) $existing->is_vip_visit_requested : false,
                 'is_visited' => $existing && $existing->visited_at !== null,
                 'visited_at' => $existing ? $existing->visited_at : null,
                 'visited_by' => $existing && $existing->worker ? $existing->worker->name : null,
             ];
         }
 
+        $primaryBlockCode = $blockCodes[0] ?? $worker->assigned_block_code;
+
         return response()->json([
             'success' => true,
-            'block_code' => $blockCode,
+            'status' => true,
+            'is_multi_block' => count($blockCodes) > 1,
+            'block_code' => $primaryBlockCode,
+            'assigned_block_code' => $worker->assigned_block_code,
+            'block_codes' => $blockCodes,
+            'blocks_summary' => array_values($blocksSummary),
+            'total_blocks' => count($blockCodes),
             'total_gharanas' => count($gharanaList),
-            'total_voters' => $voters->flatten()->count(),
+            'total_voters' => $voters->count(),
             'gharanas' => $gharanaList,
+            'data' => $gharanaList,
         ]);
     }
 
@@ -211,12 +264,13 @@ class CampaignController extends Controller
     {
         $worker = $this->getAuthenticatedWorker($request);
         if (!$worker) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated staff member.'], 401);
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated staff member.'], 401);
         }
 
         $request->validate([
             'surveys' => 'required|array',
             'surveys.*.gharana_no' => 'required|integer',
+            'surveys.*.block_code' => 'nullable|string|max:50',
             'surveys.*.sentiment' => 'required|in:pakka,kacha,mukhalif,unassigned',
             'surveys.*.notes' => 'nullable|string|max:500',
             'surveys.*.influencer_name' => 'nullable|string|max:150',
@@ -224,16 +278,21 @@ class CampaignController extends Controller
             'surveys.*.visited_at' => 'nullable|date',
         ]);
 
-        $blockCode = $worker->assigned_block_code;
+        $assignedCodes = array_values(array_filter(array_map('trim', explode(',', (string) $worker->assigned_block_code))));
+        $primaryBlockCode = $assignedCodes[0] ?? $worker->assigned_block_code;
         $candidateId = $worker->candidate_id;
         $processed = 0;
 
-        $block = BlockCode::where('code', $blockCode)->first();
-        $blockCodeId = $block ? $block->id : null;
+        // Cache block models
+        $blockCache = BlockCode::whereIn('code', $assignedCodes)->get()->keyBy('code');
 
         foreach ($request->input('surveys') as $item) {
             $gharanaNo = (int) $item['gharana_no'];
-            
+            $itemBlockCode = !empty($item['block_code']) ? trim($item['block_code']) : $primaryBlockCode;
+
+            $block = $blockCache->get($itemBlockCode) ?? BlockCode::where('code', $itemBlockCode)->first();
+            $blockCodeId = $block ? $block->id : null;
+
             // Count actual voters in this gharana if not explicitly provided
             $voterCount = !empty($item['voter_count']) ? (int) $item['voter_count'] : (
                 $blockCodeId ? Voter::where('block_code_id', $blockCodeId)->where('gharana_no', $gharanaNo)->count() : 1
@@ -245,7 +304,7 @@ class CampaignController extends Controller
             GharanaSurvey::updateOrCreate(
                 [
                     'candidate_id' => $candidateId,
-                    'block_code' => $blockCode,
+                    'block_code' => $itemBlockCode,
                     'gharana_no' => $gharanaNo,
                 ],
                 [
@@ -265,6 +324,7 @@ class CampaignController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => true,
             'message' => "Successfully synced {$processed} household surveys.",
             'synced_count' => $processed,
             'last_sync_at' => now()->toDateTimeString(),
@@ -286,7 +346,7 @@ class CampaignController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:150',
                 'phone' => 'nullable|string|max:50',
-                'assigned_block_code' => 'required|string|max:50',
+                'assigned_block_code' => 'required|string|max:255',
                 'pin' => 'nullable|string|min:4|max:10',
             ]);
 
@@ -370,7 +430,7 @@ class CampaignController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:150',
             'phone' => 'nullable|string|max:50',
-            'assigned_block_code' => 'sometimes|string|max:50',
+            'assigned_block_code' => 'sometimes|string|max:255',
             'pin' => 'sometimes|string|min:4|max:10',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -760,16 +820,15 @@ class CampaignController extends Controller
 
         if ($token) {
             // 3a. Search CandidateDevice by api_token (raw or sha256)
-            $device = CandidateDevice::with(['candidate', 'user'])
-                ->where(function ($q) use ($token) {
+            $device = CandidateDevice::where(function ($q) use ($token) {
                     $q->where('api_token', $token)
                       ->orWhere('api_token', hash('sha256', $token));
                 })
                 ->where('is_revoked', false)
                 ->first();
 
-            if ($device) {
-                $candidate = $device->candidate ?? $device->user;
+            if ($device && $device->user_id) {
+                $candidate = User::find($device->user_id);
                 if ($candidate && $candidate->status === 'active') {
                     $device->update(['last_active_at' => now(), 'ip_address' => $request->ip()]);
                     return $candidate;
@@ -777,16 +836,18 @@ class CampaignController extends Controller
             }
 
             // 3b. Search CampaignWorker by api_token (if staff token is passed to candidate screen)
-            $worker = CampaignWorker::with('candidate')
-                ->where(function ($q) use ($token) {
+            $worker = CampaignWorker::where(function ($q) use ($token) {
                     $q->where('api_token', $token)
                       ->orWhere('api_token', hash('sha256', $token));
                 })
                 ->where('is_active', true)
                 ->first();
 
-            if ($worker && $worker->candidate && $worker->candidate->status === 'active') {
-                return $worker->candidate;
+            if ($worker && $worker->candidate_id) {
+                $candidate = User::find($worker->candidate_id);
+                if ($candidate && $candidate->status === 'active') {
+                    return $candidate;
+                }
             }
 
             // 3c. Direct candidate user token check (if token matches candidate_code directly)
@@ -809,13 +870,12 @@ class CampaignController extends Controller
             ?? $request->input('device_uid');
 
         if ($deviceUid) {
-            $device = CandidateDevice::with(['candidate', 'user'])
-                ->where('device_uid', trim($deviceUid))
+            $device = CandidateDevice::where('device_uid', trim($deviceUid))
                 ->where('is_revoked', false)
                 ->first();
 
-            if ($device) {
-                $candidate = $device->candidate ?? $device->user;
+            if ($device && $device->user_id) {
+                $candidate = User::find($device->user_id);
                 if ($candidate && $candidate->status === 'active') {
                     return $candidate;
                 }
