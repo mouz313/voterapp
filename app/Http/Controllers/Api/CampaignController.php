@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class CampaignController extends Controller
@@ -89,10 +90,11 @@ class CampaignController extends Controller
             ], 403);
         }
 
-        $worker = CampaignWorker::where('candidate_id', $candidate->id)
-            ->where('pin', trim($validated['pin']))
+        $workers = CampaignWorker::where('candidate_id', $candidate->id)
             ->where('is_active', true)
-            ->first();
+            ->get();
+
+        $worker = $workers->first(fn ($w) => Hash::check(trim($validated['pin']), $w->pin));
 
         if (!$worker) {
             return response()->json([
@@ -283,13 +285,14 @@ class CampaignController extends Controller
                 'is_active' => true,
             ]);
 
-            $shareText = rawurlencode("Salam {$worker->name}! VoterApp Campaign login details:\nCandidate Code: {$candidate->candidate_code}\nWorker PIN: {$worker->pin}\nAssigned Block: {$worker->assigned_block_code}");
+            $shareText = rawurlencode("Salam {$worker->name}! VoterApp Campaign login details:\nCandidate Code: {$candidate->candidate_code}\nWorker PIN: {$pin}\nAssigned Block: {$worker->assigned_block_code}");
 
             return response()->json([
                 'success' => true,
                 'message' => "Worker [{$worker->name}] created successfully.",
                 'worker' => $worker,
-                'whatsapp_message' => "Salam {$worker->name}! VoterApp Campaign login details:\nCandidate Code: {$candidate->candidate_code}\nWorker PIN: {$worker->pin}\nAssigned Block: {$worker->assigned_block_code}",
+                'plain_pin' => $pin,
+                'whatsapp_message' => "Salam {$worker->name}! VoterApp Campaign login details:\nCandidate Code: {$candidate->candidate_code}\nWorker PIN: {$pin}\nAssigned Block: {$worker->assigned_block_code}",
                 'whatsapp_share_url' => "https://wa.me/?text=" . $shareText,
             ], 201);
         }
@@ -307,7 +310,7 @@ class CampaignController extends Controller
                     'id' => $w->id,
                     'name' => $w->name,
                     'phone' => $w->phone,
-                    'pin' => $w->pin,
+                    'pin' => '****',
                     'assigned_block_code' => $w->assigned_block_code,
                     'device_uid' => $w->device_uid,
                     'is_active' => $w->is_active,
@@ -315,7 +318,7 @@ class CampaignController extends Controller
                     'pakka_count' => $w->pakka_count,
                     'last_sync_at' => $w->last_sync_at ? $w->last_sync_at->diffForHumans() : 'Never',
                     'is_idle' => $w->last_sync_at ? $w->last_sync_at->diffInHours(now()) >= 3 : true,
-                    'whatsapp_text' => "Salam {$w->name}! VoterApp details: Candidate Code: {$candidate->candidate_code} | PIN: {$w->pin} | Block: {$w->assigned_block_code}",
+                    'whatsapp_text' => "Salam {$w->name}! VoterApp details: Candidate Code: {$candidate->candidate_code} | Block: {$w->assigned_block_code}",
                 ];
             });
 
@@ -475,26 +478,27 @@ class CampaignController extends Controller
      */
     public function campIssueParchi(Request $request): JsonResponse
     {
+        // Auth check: Worker or Candidate token required
+        $worker = $this->getAuthenticatedWorker($request);
+        $candidate = null;
+
+        if ($worker) {
+            $candidate = $worker->candidate;
+        } else {
+            $candidate = $this->getAuthenticatedCandidate($request);
+        }
+
+        if (!$candidate) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
         $request->validate([
-            'candidate_code' => 'nullable|string',
-            'candidate_id' => 'nullable|integer',
             'voter_id' => 'nullable|integer',
             'block_code' => 'nullable|string',
             'gharana_no' => 'nullable|integer',
         ]);
 
-        $candidate = null;
-        if ($request->filled('candidate_code')) {
-            $candidate = User::where('candidate_code', strtoupper(trim($request->candidate_code)))->first();
-        } elseif ($request->filled('candidate_id')) {
-            $candidate = User::find($request->candidate_id);
-        }
-
-        if (!$candidate) {
-            return response()->json(['success' => false, 'message' => 'Invalid candidate code or ID.'], 404);
-        }
-
-        $blockCodeStr = $request->block_code;
+        $blockCodeStr = $request->block_code ?: ($worker ? $worker->assigned_block_code : null);
         $gharanaNo = $request->gharana_no;
 
         if ($request->filled('voter_id')) {
@@ -541,6 +545,12 @@ class CampaignController extends Controller
      */
     public function processCampaignMatrix(Request $request): JsonResponse
     {
+        // Verify Cron Secret Key
+        $secret = config('app.cron_secret') ?: env('CRON_SECRET');
+        if (empty($secret) || $request->header('X-Cron-Secret') !== $secret) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $candidates = User::where('role', 'candidate')->where('status', 'active')->get();
         $processed = 0;
 

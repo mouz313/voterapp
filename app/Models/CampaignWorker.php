@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class CampaignWorker extends Model
@@ -28,6 +30,13 @@ class CampaignWorker extends Model
         'last_sync_at' => 'datetime',
         'is_active' => 'boolean',
     ];
+
+    protected function pin(): Attribute
+    {
+        return Attribute::make(
+            set: fn (string $value) => Hash::needsRehash($value) ? Hash::make($value) : $value,
+        );
+    }
 
     public function candidate(): BelongsTo
     {
