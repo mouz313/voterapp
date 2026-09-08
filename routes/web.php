@@ -201,6 +201,20 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
 Route::prefix('v1')->group(function () {
     Route::match(['GET', 'POST'], '/auth/login', [\App\Http\Controllers\Api\MobileApiController::class, 'login']);
 
+    // Campaign White-Label Branding & Staff
+    Route::post('/auth/campaign-branding', [\App\Http\Controllers\Api\CampaignController::class, 'campaignBranding']);
+    Route::post('/staff/login', [\App\Http\Controllers\Api\CampaignController::class, 'staffLogin']);
+    Route::get('/staff/block/data', [\App\Http\Controllers\Api\CampaignController::class, 'staffBlockData']);
+    Route::post('/staff/survey/sync', [\App\Http\Controllers\Api\CampaignController::class, 'staffSurveySync']);
+
+    // Candidate Operations & War Room
+    Route::match(['GET', 'POST'], '/candidate/workers', [\App\Http\Controllers\Api\CampaignController::class, 'candidateWorkers']);
+    Route::put('/candidate/workers/{id}', [\App\Http\Controllers\Api\CampaignController::class, 'updateWorker']);
+    Route::delete('/candidate/workers/{id}', [\App\Http\Controllers\Api\CampaignController::class, 'deleteWorker']);
+    Route::get('/candidate/war-room', [\App\Http\Controllers\Api\CampaignController::class, 'candidateWarRoom']);
+    Route::post('/camp/issue-parchi', [\App\Http\Controllers\Api\CampaignController::class, 'campIssueParchi']);
+    Route::get('/cron/process-campaign-matrix', [\App\Http\Controllers\Api\CampaignController::class, 'processCampaignMatrix']);
+
     Route::middleware([\App\Http\Middleware\CandidateAuthMiddleware::class])->group(function () {
         Route::get('/auth/check-device', [\App\Http\Controllers\Api\MobileApiController::class, 'checkDevice']);
         Route::get('/download', [\App\Http\Controllers\Api\MobileApiController::class, 'downloadUcData']);

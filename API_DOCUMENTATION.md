@@ -36,18 +36,35 @@ Authorization: Bearer <TOKEN_RECEIVED_FROM_LOGIN>
 
 ## 📑 3. Endpoints Quick Matrix
 
+> **Base URL**: Sabhi endpoints `http://your-domain/api/v1/...` ya direct `http://your-domain/v1/...` dono formats support karte hain.
+
+### A. Campaign Operations & Mobile War Room (v3.0)
 | # | Endpoint | Method | Purpose | Auth Required |
 |---|---|:---:|---|:---:|
-| **1** | `/api/v1/auth/login` | `POST` / `GET` | Candidate worker login & device binding | No |
-| **2** | `/api/v1/auth/check-device` | `GET` | Check if device is active or revoked | Yes |
-| **3** | `/api/v1/download` | `GET` | Download full UC dataset for offline use | Yes |
-| **4** | `/api/v1/sync/searches` | `POST` | Batch upload offline search telemetry logs | Yes |
-| **5** | `/api/v1/sync/heartbeat` | `POST` | Device live ping & battery telemetry | Yes |
-| **6** | `/api/v1/voters/search` | `POST` / `GET` | Direct online voter search fallback | Yes |
-| **7** | `/api/ucs` | `GET` | Raw list of all UCs, Tehsils & Districts | Optional |
-| **8** | `/api/ucs/{id}/block-codes` | `GET` | List census block codes of a UC | Optional |
-| **9** | `/api/ucs/{id}/polling-stations`| `GET` | List polling stations of a UC | Optional |
-| **10**| `/api/ucs/{id}/voters` | `GET` | Paginated voters list of a UC | Optional |
+| **1** | `/api/v1/auth/campaign-branding` | `POST` | Dynamic Party Theming, Colors, Supreme Leader Photo & Slogan | Public (No) |
+| **2** | `/api/v1/staff/login` | `POST` | Field Worker 4-Digit PIN Authentication & Device Binding | Public (No) |
+| **3** | `/api/v1/staff/block/data` | `GET` | Download Assigned Census Block Voters & Survey History | Worker Bearer Token |
+| **4** | `/api/v1/staff/survey/sync` | `POST` | Batch Upload Door-to-Door Household Surveys (Silent Sync) | Worker Bearer Token |
+| **5** | `/api/v1/candidate/war-room` | `GET` | Live UC Coverage %, Vote Bank Breakdown, Worker Leaderboard | Candidate Token / Code |
+| **6** | `/api/v1/candidate/workers` | `GET` / `POST` | List Field Workers & Self-Service Worker Creation (+WhatsApp) | Candidate Token / Code |
+| **7** | `/api/v1/candidate/workers/{id}`| `PUT` | Update Worker Assigned Block, Phone, or PIN | Candidate Token / Code |
+| **8** | `/api/v1/candidate/workers/{id}`| `DELETE` | Deactivate / Remove Worker | Candidate Token / Code |
+| **9** | `/api/v1/camp/issue-parchi` | `POST` | Election Day Camp Thermal Parchi Issuance & Live Turnout | Worker / Candidate Token |
+| **10**| `/api/v1/cron/process-campaign-matrix`| `GET` | Background Cache Aggregation (cron-job.org) | `X-Cron-Secret` Header |
+
+### B. Polling Station & Voter Verification (Core v1)
+| # | Endpoint | Method | Purpose | Auth Required |
+|---|---|:---:|---|:---:|
+| **11**| `/api/v1/auth/login` | `POST` / `GET` | Candidate Polling Agent Login & Device Hardware Binding | Public (No) |
+| **12**| `/api/v1/auth/check-device` | `GET` | Check if Mobile Device Hardware is Active or Revoked | Candidate Device Token |
+| **13**| `/api/v1/download` | `GET` | Download Complete UC Dataset (Voters & PS) for Offline SQLite | Candidate Device Token |
+| **14**| `/api/v1/sync/searches` | `POST` | Batch Upload Offline Search Telemetry Logs | Candidate Device Token |
+| **15**| `/api/v1/sync/heartbeat` | `POST` | Device Live Ping & Battery Telemetry | Candidate Device Token |
+| **16**| `/api/v1/voters/search` | `POST` / `GET` | Direct Online Voter Search Fallback | Candidate Device Token |
+| **17**| `/api/ucs` | `GET` | Raw List of UCs, Tehsils & Districts | Optional |
+| **18**| `/api/ucs/{id}/block-codes` | `GET` | List Census Block Codes of a UC | Optional |
+| **19**| `/api/ucs/{id}/polling-stations`| `GET` | List Polling Stations of a UC | Optional |
+| **20**| `/api/ucs/{id}/voters` | `GET` | Paginated Voters List of a UC | Optional |
 
 ---
 

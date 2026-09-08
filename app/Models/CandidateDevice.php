@@ -38,4 +38,9 @@ class CandidateDevice extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function candidate(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

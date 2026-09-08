@@ -67,39 +67,56 @@ class CampaignController extends Controller
     public function staffLogin(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'candidate_code' => 'required|string',
+            'candidate_code' => 'nullable|string',
             'pin' => 'required|string|min:4|max:10',
             'device_uid' => 'nullable|string|max:100',
         ]);
 
-        $candidate = User::where('candidate_code', strtoupper(trim($validated['candidate_code'])))
-            ->where('role', 'candidate')
-            ->first();
+        $candidate = null;
+        $worker = null;
 
-        if (!$candidate) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid Candidate Code.',
-            ], 404);
+        if (!empty($validated['candidate_code'])) {
+            $candidate = User::where('candidate_code', strtoupper(trim($validated['candidate_code'])))
+                ->where('role', 'candidate')
+                ->first();
+
+            if (!$candidate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid Candidate Code.',
+                ], 404);
+            }
+
+            if ($candidate->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Candidate license is currently inactive.',
+                ], 403);
+            }
+
+            $workers = CampaignWorker::where('candidate_id', $candidate->id)
+                ->where('is_active', true)
+                ->get();
+
+            $worker = $workers->first(fn ($w) => Hash::check(trim($validated['pin']), $w->pin));
+        } else {
+            $workers = CampaignWorker::where('is_active', true)->with('candidate')->get();
+            $worker = $workers->first(fn ($w) => Hash::check(trim($validated['pin']), $w->pin));
+            if ($worker && $worker->candidate) {
+                $candidate = $worker->candidate;
+                if ($candidate->status !== 'active') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Candidate license is currently inactive.',
+                    ], 403);
+                }
+            }
         }
 
-        if ($candidate->status !== 'active') {
+        if (!$worker || !$candidate) {
             return response()->json([
                 'success' => false,
-                'message' => 'Candidate license is currently inactive.',
-            ], 403);
-        }
-
-        $workers = CampaignWorker::where('candidate_id', $candidate->id)
-            ->where('is_active', true)
-            ->get();
-
-        $worker = $workers->first(fn ($w) => Hash::check(trim($validated['pin']), $w->pin));
-
-        if (!$worker) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid 4-digit PIN for this candidate campaign.',
+                'message' => 'Invalid 4-digit PIN.',
             ], 401);
         }
 
@@ -640,14 +657,17 @@ class CampaignController extends Controller
      */
     protected function getAuthenticatedWorker(Request $request): ?CampaignWorker
     {
-        $token = $request->bearerToken() ?: $request->input('token');
+        $token = $request->bearerToken() ?: ($request->header('X-API-KEY') ?: $request->input('token'));
         if (!$token) {
             return null;
         }
 
-        return CampaignWorker::where('api_token', hash('sha256', $token))
-            ->where('is_active', true)
-            ->first();
+        return CampaignWorker::where(function ($q) use ($token) {
+            $q->where('api_token', $token)
+              ->orWhere('api_token', hash('sha256', $token));
+        })
+        ->where('is_active', true)
+        ->first();
     }
 
     /**
@@ -660,13 +680,17 @@ class CampaignController extends Controller
             return auth()->user();
         }
 
-        // 2. Candidate Device Bearer Token
-        $token = $request->bearerToken() ?: $request->input('token');
+        // 2. Candidate Device Bearer Token or X-API-KEY
+        $token = $request->bearerToken() ?: ($request->header('X-API-KEY') ?: $request->input('token'));
         if ($token) {
-            $device = CandidateDevice::where('api_token', hash('sha256', $token))
-                ->where('is_revoked', false)
-                ->first();
-            if ($device) {
+            $device = CandidateDevice::where(function ($q) use ($token) {
+                $q->where('api_token', $token)
+                  ->orWhere('api_token', hash('sha256', $token));
+            })
+            ->where('is_revoked', false)
+            ->first();
+
+            if ($device && $device->candidate) {
                 return $device->candidate;
             }
         }
