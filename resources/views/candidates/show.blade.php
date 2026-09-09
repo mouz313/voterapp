@@ -26,6 +26,10 @@
                 <i class="bi bi-phone"></i>
                 <span>Devices ({{ $activeDevices }} Active &bull; Unlimited)</span>
             </a>
+            <button type="button" class="btn btn-outline-warning text-dark btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                <i class="bi bi-key-fill text-warning"></i>
+                <span>Reset Password</span>
+            </button>
             <a href="{{ route('candidates.edit', $candidate) }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
                 <i class="bi bi-pencil-square"></i>
                 <span>Edit</span>
@@ -501,5 +505,271 @@
             </div>
         </div>
     </div>
+
+    <!-- 4. Field Campaign Operations & War Room Matrix -->
+    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-flag-fill me-2 text-danger"></i>Field Campaign Operations &amp; Canvassing Matrix
+                </h6>
+                <small class="text-muted">Door-to-door household surveys, worker performance, and election day voter turnout</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 font-mono">
+                    <i class="bi bi-people-fill me-1"></i>{{ $campaignStats['total_workers'] }} Field Workers ({{ $campaignStats['active_workers'] }} Active)
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 font-mono">
+                    <i class="bi bi-check2-circle me-1"></i>{{ $campaignStats['coverage_pct'] }}% UC Coverage
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body p-4 bg-light">
+            <!-- Campaign KPIs 5-Card Row -->
+            <div class="row g-3 mb-4 text-center">
+                <div class="col-6 col-md-4 col-xl">
+                    <div class="card shadow-sm border-0 h-100 p-3 bg-white border-top border-3 border-success">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">Pakka Vote Bank</div>
+                        <div class="fs-4 fw-bold text-success font-mono">{{ number_format($campaignStats['pakka_votes']) }}</div>
+                        <small class="text-muted">Confirmed Supporters</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl">
+                    <div class="card shadow-sm border-0 h-100 p-3 bg-white border-top border-3 border-warning">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">Kacha / Swing Votes</div>
+                        <div class="fs-4 fw-bold text-warning font-mono">{{ number_format($campaignStats['kacha_votes']) }}</div>
+                        <small class="text-muted">High Priority Follow-ups</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-xl">
+                    <div class="card shadow-sm border-0 h-100 p-3 bg-white border-top border-3 border-danger">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">Mukhalif Votes</div>
+                        <div class="fs-4 fw-bold text-danger font-mono">{{ number_format($campaignStats['mukhalif_votes']) }}</div>
+                        <small class="text-muted">Opponent Leaning</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-6 col-xl">
+                    <div class="card shadow-sm border-0 h-100 p-3 bg-white border-top border-3 border-primary">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">Surveyed Gharanas</div>
+                        <div class="fs-4 fw-bold text-primary font-mono">{{ number_format($campaignStats['total_surveys']) }}</div>
+                        <small class="text-muted">{{ $campaignStats['coverage_pct'] }}% of UC Gharanas</small>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl">
+                    <div class="card shadow-sm border-0 h-100 p-3 bg-white border-top border-3 border-info">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">Turnout Parchis</div>
+                        <div class="fs-4 fw-bold text-info font-mono">{{ number_format($campaignStats['turnout_parchis']) }}</div>
+                        <small class="text-muted">Election Day Slips Issued</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Field Workers Roster Table -->
+            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                <div class="card-header bg-white py-2.5 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold small text-uppercase text-dark">
+                        <i class="bi bi-person-lines-fill me-1 text-primary"></i>Field Staff Roster &amp; Assignment
+                    </span>
+                    <span class="badge bg-secondary-subtle text-dark border small">{{ count($campaignWorkers) }} Assigned Workers</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Worker Name</th>
+                                <th>Phone Number</th>
+                                <th>Assigned Census Block(s)</th>
+                                <th class="text-center">Gharanas Visited</th>
+                                <th class="text-center">Pakka Votes</th>
+                                <th class="text-center">Kacha Votes</th>
+                                <th>Last Active / Sync</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($campaignWorkers as $index => $w)
+                                <tr>
+                                    <td>{{ $index + 1 }}</td>
+                                    <td class="fw-bold text-dark">
+                                        <i class="bi bi-person-badge text-secondary me-1"></i>{{ $w->name }}
+                                    </td>
+                                    <td class="font-mono">
+                                        <a href="tel:{{ $w->phone }}" class="text-decoration-none text-dark">{{ $w->phone }}</a>
+                                    </td>
+                                    <td>
+                                        @foreach(explode(',', $w->assigned_block_code) as $bCode)
+                                            <span class="badge bg-light text-dark border font-mono mb-0.5">{{ trim($bCode) }}</span>
+                                        @endforeach
+                                    </td>
+                                    <td class="text-center font-mono fw-bold text-primary">{{ $w->visited_count }}</td>
+                                    <td class="text-center font-mono fw-bold text-success">{{ $w->pakka_count }}</td>
+                                    <td class="text-center font-mono fw-bold text-warning">{{ $w->kacha_count }}</td>
+                                    <td>
+                                        @if ($w->last_sync_at)
+                                            <span class="text-dark">{{ $w->last_sync_at->diffForHumans() }}</span>
+                                            <small class="text-muted d-block font-mono" style="font-size: 0.7rem;">{{ $w->last_sync_at->format('d M, h:i A') }}</small>
+                                        @else
+                                            <span class="text-muted">No Sync Yet</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($w->is_active)
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                        @else
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-3">
+                                        <i class="bi bi-people text-secondary fs-4 d-block mb-1"></i>
+                                        No campaign workers registered for this candidate yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIP Visit Requests & Canvassing Remarks -->
+            @if ($vipVisitRequests->isNotEmpty())
+                <div class="card shadow-sm border-0 overflow-hidden">
+                    <div class="card-header bg-white py-2.5 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold small text-uppercase text-dark">
+                            <i class="bi bi-star-fill text-warning me-1"></i>VIP Candidate Visit Requests &amp; Canvassing Remarks
+                        </span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle small">{{ $campaignStats['vip_requests_count'] }} Requests</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Block Code</th>
+                                    <th>Gharana #</th>
+                                    <th>Influencer / Head</th>
+                                    <th>Contact Phone</th>
+                                    <th>Sentiment</th>
+                                    <th>Field Remarks / Notes</th>
+                                    <th>Survey Worker</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($vipVisitRequests as $req)
+                                    <tr>
+                                        <td class="font-mono fw-bold">{{ $req->block_code }}</td>
+                                        <td class="font-mono">Gharana #{{ $req->gharana_no }}</td>
+                                        <td class="fw-bold text-dark">
+                                            <i class="bi bi-person me-1 text-secondary"></i>{{ $req->influencer_name ?: 'Family Elder' }}
+                                        </td>
+                                        <td>
+                                            @if ($req->influencer_phone)
+                                                <a href="tel:{{ $req->influencer_phone }}" class="text-success fw-bold text-decoration-none font-mono">
+                                                    <i class="bi bi-telephone-fill me-1"></i>{{ $req->influencer_phone }}
+                                                </a>
+                                            @else
+                                                <span class="text-muted small">Not provided</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($req->sentiment === 'pakka')
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">Pakka</span>
+                                            @elseif ($req->sentiment === 'kacha')
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Kacha</span>
+                                            @else
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Mukhalif</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $req->notes ?: 'Requested personal candidate visit' }}</td>
+                                        <td>{{ $req->worker?->name ?? 'Staff' }}</td>
+                                        <td class="text-muted font-mono">{{ $req->created_at->format('d M Y, h:i A') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
 </div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning-subtle py-3">
+                <h6 class="modal-title fw-bold text-dark" id="resetPasswordModalLabel">
+                    <i class="bi bi-key-fill text-warning me-2"></i>Reset Candidate Password
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('candidates.reset-password', $candidate) }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>
+                            Resetting password for <strong>{{ $candidate->name }}</strong> (<code>{{ $candidate->email }}</code>).
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label fw-semibold small">New Password</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-mono" id="new_password" name="password" required minlength="6" placeholder="Enter new password (min 6 chars)">
+                            <button type="button" class="btn btn-outline-secondary" id="btnGenPass" title="Generate Random Password">
+                                <i class="bi bi-shuffle me-1"></i>Generate
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnCopyPass" title="Copy Password">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted mt-1 d-block">You can click <strong>Generate</strong> to create a secure password and <strong>Copy</strong> to send to the candidate on WhatsApp.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold">
+                        <i class="bi bi-check-circle me-1"></i>Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const genBtn = document.getElementById('btnGenPass');
+    const copyBtn = document.getElementById('btnCopyPass');
+    const passInput = document.getElementById('new_password');
+
+    if (genBtn && passInput) {
+        genBtn.addEventListener('click', function() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+            let res = 'Vp@';
+            for (let i = 0; i < 6; i++) {
+                res += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            passInput.value = res;
+        });
+    }
+
+    if (copyBtn && passInput) {
+        copyBtn.addEventListener('click', function() {
+            if (!passInput.value) return;
+            navigator.clipboard.writeText(passInput.value).then(() => {
+                const origHtml = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="bi bi-check text-success"></i>';
+                setTimeout(() => copyBtn.innerHTML = origHtml, 1500);
+            });
+        });
+    }
+});
+</script>
 @endsection

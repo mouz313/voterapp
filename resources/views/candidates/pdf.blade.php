@@ -307,6 +307,88 @@
         </tbody>
     </table>
 
+    <!-- Field Campaign Operations & Canvassing Matrix -->
+    <div class="section-heading">Field Campaign Operations &amp; Ground Canvassing</div>
+    <table class="kpi-table" style="margin-bottom: 10px;">
+        <tr>
+            <td class="kpi-cell" style="width: 25%;">
+                <div class="kpi-num" style="color: #16a34a;">{{ number_format($campaignStats['pakka_votes']) }}</div>
+                <div class="kpi-sub">Pakka Vote Bank</div>
+            </td>
+            <td class="kpi-cell" style="width: 25%;">
+                <div class="kpi-num" style="color: #d97706;">{{ number_format($campaignStats['kacha_votes']) }}</div>
+                <div class="kpi-sub">Kacha / Swing Votes</div>
+            </td>
+            <td class="kpi-cell" style="width: 25%;">
+                <div class="kpi-num" style="color: #2563eb;">{{ $campaignStats['coverage_pct'] }}%</div>
+                <div class="kpi-sub">Gharana Coverage ({{ $campaignStats['total_surveys'] }})</div>
+            </td>
+            <td class="kpi-cell" style="width: 25%;">
+                <div class="kpi-num" style="color: #0891b2;">{{ number_format($campaignStats['turnout_parchis']) }}</div>
+                <div class="kpi-sub">GOTV Parchis Printed</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Field Staff Table -->
+    <div class="section-heading">Assigned Field Workers &amp; Performance ({{ count($campaignWorkers) }})</div>
+    <table class="data-table" style="margin-bottom: 12px;">
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 30%;">Worker Name</th>
+                <th style="width: 20%;">Phone</th>
+                <th style="width: 20%;">Assigned Block(s)</th>
+                <th class="text-center" style="width: 13%;">Visited</th>
+                <th class="text-center" style="width: 12%;">Pakka</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($campaignWorkers as $idx => $w)
+                <tr>
+                    <td class="text-center">{{ $idx + 1 }}</td>
+                    <td class="fw-bold">{{ $w->name }}</td>
+                    <td class="font-mono">{{ $w->phone }}</td>
+                    <td>{{ $w->assigned_block_code }}</td>
+                    <td class="text-center font-mono fw-bold" style="color: #2563eb;">{{ $w->visited_count }}</td>
+                    <td class="text-center font-mono fw-bold" style="color: #16a34a;">{{ $w->pakka_count }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" class="text-center" style="padding: 10px; color: #64748b;">No field workers registered.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @if ($vipVisitRequests->isNotEmpty())
+        <div class="section-heading">VIP Candidate Visit Requests ({{ count($vipVisitRequests) }})</div>
+        <table class="data-table" style="margin-bottom: 12px;">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Block</th>
+                    <th style="width: 12%;">Gharana #</th>
+                    <th style="width: 22%;">Influencer</th>
+                    <th style="width: 18%;">Phone</th>
+                    <th style="width: 12%;">Sentiment</th>
+                    <th style="width: 24%;">Remarks / Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($vipVisitRequests->take(8) as $req)
+                    <tr>
+                        <td class="font-mono">{{ $req->block_code }}</td>
+                        <td class="font-mono">#{{ $req->gharana_no }}</td>
+                        <td class="fw-bold">{{ $req->influencer_name ?: 'Family Head' }}</td>
+                        <td class="font-mono">{{ $req->influencer_phone ?: '-' }}</td>
+                        <td>{{ strtoupper($req->sentiment) }}</td>
+                        <td>{{ Str::limit($req->notes ?: 'Visit requested', 35) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
     <!-- Official Signatures Table -->
     <table class="signature-table">
         <tr>

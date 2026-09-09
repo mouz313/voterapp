@@ -395,6 +395,141 @@
         </tbody>
     </table>
 
+    <!-- Field Campaign Operations & Ground Canvassing Matrix -->
+    <div class="section-title">
+        <i class="bi bi-flag-fill text-danger"></i> Field Campaign Operations &amp; Ground Canvassing Matrix
+    </div>
+    <div class="row g-2 mb-3">
+        <div class="col-3">
+            <div class="kpi-card">
+                <div class="kpi-label">Pakka Vote Bank</div>
+                <div class="kpi-value text-success">{{ number_format($campaignStats['pakka_votes']) }}</div>
+                <div class="small text-muted" style="font-size: 10px;">Confirmed Supporters</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="kpi-card">
+                <div class="kpi-label">Kacha / Swing Votes</div>
+                <div class="kpi-value text-warning-emphasis">{{ number_format($campaignStats['kacha_votes']) }}</div>
+                <div class="small text-muted" style="font-size: 10px;">Potential Swing Base</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="kpi-card">
+                <div class="kpi-label">Gharana Coverage</div>
+                <div class="kpi-value text-primary">{{ $campaignStats['coverage_pct'] }}%</div>
+                <div class="small text-muted" style="font-size: 10px;">{{ $campaignStats['total_surveys'] }} Households Surveyed</div>
+            </div>
+        </div>
+        <div class="col-3">
+            <div class="kpi-card">
+                <div class="kpi-label">GOTV Polling Turnout</div>
+                <div class="kpi-value text-info">{{ number_format($campaignStats['turnout_parchis']) }}</div>
+                <div class="small text-muted" style="font-size: 10px;">Parchis Issued at Camps</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Field Workers Table -->
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="fw-bold small text-uppercase text-dark" style="font-size: 11px;">
+            <i class="bi bi-people-fill me-1 text-primary"></i>Assigned Field Staff &amp; Canvassing Performance ({{ count($campaignWorkers) }})
+        </span>
+    </div>
+    <table class="table table-report table-bordered mb-4">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Worker Name</th>
+                <th>Phone</th>
+                <th>Assigned Block(s)</th>
+                <th class="text-center">Gharanas Visited</th>
+                <th class="text-center">Pakka Votes</th>
+                <th class="text-center">Kacha Votes</th>
+                <th>Last Active / Sync</th>
+                <th class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($campaignWorkers as $idx => $w)
+                <tr>
+                    <td class="text-muted">{{ $idx + 1 }}</td>
+                    <td class="fw-semibold">{{ $w->name }}</td>
+                    <td class="font-mono">{{ $w->phone }}</td>
+                    <td>
+                        @foreach(explode(',', $w->assigned_block_code) as $b)
+                            <span class="badge bg-light text-dark border font-mono">{{ trim($b) }}</span>
+                        @endforeach
+                    </td>
+                    <td class="text-center font-mono fw-bold text-primary">{{ $w->visited_count }}</td>
+                    <td class="text-center font-mono fw-bold text-success">{{ $w->pakka_count }}</td>
+                    <td class="text-center font-mono fw-bold text-warning">{{ $w->kacha_count }}</td>
+                    <td>
+                        @if ($w->last_sync_at)
+                            {{ $w->last_sync_at->format('d M Y, h:i A') }}
+                        @else
+                            <span class="text-muted">No Sync</span>
+                        @endif
+                    </td>
+                    <td class="text-center">
+                        @if ($w->is_active)
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                        @else
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-3">No field staff registered for this campaign.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <!-- VIP Visit Requests & Canvassing Remarks -->
+    @if ($vipVisitRequests->isNotEmpty())
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-bold small text-uppercase text-dark" style="font-size: 11px;">
+                <i class="bi bi-star-fill me-1 text-warning"></i>VIP Candidate Visit Requests &amp; Key Contacts
+            </span>
+        </div>
+        <table class="table table-report table-bordered mb-4">
+            <thead>
+                <tr>
+                    <th>Block</th>
+                    <th>Gharana #</th>
+                    <th>Influencer / Contact</th>
+                    <th>Phone</th>
+                    <th class="text-center">Sentiment</th>
+                    <th>Canvassing Notes / Remarks</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($vipVisitRequests as $req)
+                    <tr>
+                        <td class="font-mono fw-bold">{{ $req->block_code }}</td>
+                        <td class="font-mono">#{{ $req->gharana_no }}</td>
+                        <td class="fw-semibold">{{ $req->influencer_name ?: 'Family Elder' }}</td>
+                        <td class="font-mono">{{ $req->influencer_phone ?: 'N/A' }}</td>
+                        <td class="text-center">
+                            @if ($req->sentiment === 'pakka')
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Pakka</span>
+                            @elseif ($req->sentiment === 'kacha')
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Kacha</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Mukhalif</span>
+                            @endif
+                        </td>
+                        <td>{{ $req->notes ?: 'VIP visit requested' }}</td>
+                        <td class="text-muted font-mono" style="font-size: 10px;">{{ $req->created_at->format('d M Y, h:i A') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
     <!-- Official Signatures & Verification Block -->
     <div class="row pt-4 mt-4">
         <div class="col-4">

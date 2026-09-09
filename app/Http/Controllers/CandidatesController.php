@@ -327,6 +327,95 @@ class CandidatesController extends Controller
     }
 
     /**
+     * Reset the candidate's password from Admin console.
+     */
+    public function resetPassword(Request $request, User $candidate)
+    {
+        if ($candidate->role !== 'candidate') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:6'],
+        ]);
+
+        $candidate->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back()->with('toast', [
+            'type' => 'success',
+            'message' => "Password for {$candidate->name} has been successfully reset.",
+        ]);
+    }
+
+    /**
+     * Compute comprehensive campaign operations, field workers, and canvassing metrics.
+     */
+    protected function getCandidateCampaignMetrics(User $candidate): array
+    {
+        $campaignWorkers = $candidate->campaignWorkers()
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name')
+            ->get();
+
+        foreach ($campaignWorkers as $w) {
+            $w->visited_count = $candidate->gharanaSurveys()->where('visited_by_worker_id', $w->id)->count();
+            $w->pakka_count = $candidate->gharanaSurveys()->where('visited_by_worker_id', $w->id)->where('sentiment', 'pakka')->count();
+            $w->kacha_count = $candidate->gharanaSurveys()->where('visited_by_worker_id', $w->id)->where('sentiment', 'kacha')->count();
+            $w->mukhalif_count = $candidate->gharanaSurveys()->where('visited_by_worker_id', $w->id)->where('sentiment', 'mukhalif')->count();
+        }
+
+        $totalWorkers = $campaignWorkers->count();
+        $activeWorkers = $campaignWorkers->where('is_active', true)->count();
+
+        $totalSurveys = $candidate->gharanaSurveys()->count();
+        $pakkaVotes = (int) $candidate->gharanaSurveys()->where('sentiment', 'pakka')->count();
+        $kachaVotes = (int) $candidate->gharanaSurveys()->where('sentiment', 'kacha')->count();
+        $mukhalifVotes = (int) $candidate->gharanaSurveys()->where('sentiment', 'mukhalif')->count();
+
+        $vipVisitRequests = $candidate->gharanaSurveys()
+            ->where('is_vip_visit_requested', true)
+            ->with('worker')
+            ->latest()
+            ->take(20)
+            ->get();
+
+        $totalUcBlockIds = $candidate->uc_id ? BlockCode::where('uc_id', $candidate->uc_id)->pluck('id')->toArray() : [];
+        $totalUcDistinctGharanas = !empty($totalUcBlockIds)
+            ? Voter::whereIn('block_code_id', $totalUcBlockIds)->whereNotNull('gharana_no')->select('block_code_id', 'gharana_no')->distinct()->count()
+            : 0;
+
+        $surveyedDistinctGharanas = $candidate->gharanaSurveys()->select('block_code', 'gharana_no')->distinct()->count();
+        $coveragePct = $totalUcDistinctGharanas > 0 ? min(100.0, round(($surveyedDistinctGharanas / $totalUcDistinctGharanas) * 100, 1)) : 0.0;
+
+        $turnoutParchis = (int) $candidate->gharanaSurveys()->whereNotNull('parchi_issued_at')->sum('voter_count');
+        if ($turnoutParchis === 0) {
+            $turnoutParchis = $candidate->gharanaSurveys()->whereNotNull('parchi_issued_at')->count();
+        }
+
+        $campaignStats = [
+            'total_workers' => $totalWorkers,
+            'active_workers' => $activeWorkers,
+            'total_surveys' => $totalSurveys,
+            'pakka_votes' => $pakkaVotes,
+            'kacha_votes' => $kachaVotes,
+            'mukhalif_votes' => $mukhalifVotes,
+            'coverage_pct' => $coveragePct,
+            'total_uc_gharanas' => $totalUcDistinctGharanas,
+            'surveyed_gharanas' => $surveyedDistinctGharanas,
+            'turnout_parchis' => $turnoutParchis,
+            'vip_requests_count' => $candidate->gharanaSurveys()->where('is_vip_visit_requested', true)->count(),
+        ];
+
+        return [
+            'campaignWorkers' => $campaignWorkers,
+            'campaignStats' => $campaignStats,
+            'vipVisitRequests' => $vipVisitRequests,
+        ];
+    }
+
+    /**
      * Display the specified candidate's profile, data, and comprehensive operational performance matrix.
      */
     public function show(User $candidate)
@@ -371,6 +460,12 @@ class CandidatesController extends Controller
             $dev->last_searched_at = $log ? $log->searched_at : null;
         }
 
+        // Campaign Operations Metrics
+        $campaignData = $this->getCandidateCampaignMetrics($candidate);
+        $campaignWorkers = $campaignData['campaignWorkers'];
+        $campaignStats = $campaignData['campaignStats'];
+        $vipVisitRequests = $campaignData['vipVisitRequests'];
+
         return view('candidates.show', compact(
             'candidate',
             'totalUcVoters',
@@ -386,7 +481,10 @@ class CandidatesController extends Controller
             'gharanaCount',
             'silsalaCount',
             'reachPct',
-            'quotaPct'
+            'quotaPct',
+            'campaignWorkers',
+            'campaignStats',
+            'vipVisitRequests'
         ));
     }
 
@@ -433,6 +531,12 @@ class CandidatesController extends Controller
             $dev->last_searched_at = $log ? $log->searched_at : null;
         }
 
+        // Campaign Operations Metrics
+        $campaignData = $this->getCandidateCampaignMetrics($candidate);
+        $campaignWorkers = $campaignData['campaignWorkers'];
+        $campaignStats = $campaignData['campaignStats'];
+        $vipVisitRequests = $campaignData['vipVisitRequests'];
+
         if ($request->query('download') === 'pdf') {
             $pdf = Pdf::loadView('candidates.pdf', compact(
                 'candidate',
@@ -449,7 +553,10 @@ class CandidatesController extends Controller
                 'gharanaCount',
                 'silsalaCount',
                 'reachPct',
-                'quotaPct'
+                'quotaPct',
+                'campaignWorkers',
+                'campaignStats',
+                'vipVisitRequests'
             ))->setPaper('a4', 'portrait');
 
             $filename = 'Performance_Report_' . Str::slug($candidate->name) . '_' . date('Ymd_His') . '.pdf';
@@ -472,7 +579,10 @@ class CandidatesController extends Controller
             'gharanaCount',
             'silsalaCount',
             'reachPct',
-            'quotaPct'
+            'quotaPct',
+            'campaignWorkers',
+            'campaignStats',
+            'vipVisitRequests'
         ));
     }
 }

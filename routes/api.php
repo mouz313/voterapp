@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // 1. Public Authentication & Token Issuance
     Route::match(['GET', 'POST'], '/auth/login', [MobileApiController::class, 'login']);
+    Route::post('/auth/fcm-token', [\App\Http\Controllers\Api\CampaignController::class, 'updateFcmToken']);
 
     // Campaign White-Label Branding (Public for instant login screen morphing)
     Route::post('/auth/campaign-branding', [\App\Http\Controllers\Api\CampaignController::class, 'campaignBranding']);
@@ -54,13 +55,11 @@ Route::prefix('v1')->group(function () {
 
         // Live Online Voter Search Fallback (Scoped strictly to Candidate's UC)
         Route::match(['GET', 'POST'], '/voters/search', [MobileApiController::class, 'searchVoters']);
-    });
-});
 
-// Legacy / Direct endpoints (Secured with CandidateAuthMiddleware)
-Route::middleware([CandidateAuthMiddleware::class])->group(function () {
-    Route::get('/ucs', [MobileApiController::class, 'ucs']);
-    Route::get('/ucs/{uc}/voters', [MobileApiController::class, 'voters']);
-    Route::get('/ucs/{uc}/block-codes', [MobileApiController::class, 'blockCodes']);
-    Route::get('/ucs/{uc}/polling-stations', [MobileApiController::class, 'pollingStations']);
+        // Module 6: Union Council Relational Metadata
+        Route::get('/ucs', [MobileApiController::class, 'ucs']);
+        Route::get('/ucs/{uc}/voters', [MobileApiController::class, 'voters']);
+        Route::get('/ucs/{uc}/block-codes', [MobileApiController::class, 'blockCodes']);
+        Route::get('/ucs/{uc}/polling-stations', [MobileApiController::class, 'pollingStations']);
+    });
 });

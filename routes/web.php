@@ -6,7 +6,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictsController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\NationalAssembliesController;
-use App\Http\Controllers\PdfImportController;
 use App\Http\Controllers\PollingStationsController;
 use App\Http\Controllers\ProvincialAssembliesController;
 use App\Http\Controllers\SearchController;
@@ -145,6 +144,7 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     // Candidate Management & Device Tracking
     Route::resource('candidates', CandidatesController::class);
     Route::get('/candidates/{candidate}/report', [CandidatesController::class, 'report'])->name('candidates.report');
+    Route::post('/candidates/{candidate}/reset-password', [CandidatesController::class, 'resetPassword'])->name('candidates.reset-password');
     Route::get('/candidates/{candidate}/devices', [CandidatesController::class, 'devices'])->name('candidates.devices');
     Route::post('/candidates/devices/{device}/toggle', [CandidatesController::class, 'toggleDeviceRevoke'])->name('candidates.devices.toggle');
     Route::delete('/candidates/devices/{device}', [CandidatesController::class, 'destroyDevice'])->name('candidates.devices.destroy');
@@ -184,10 +184,8 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 
-    Route::get('/import/image', [PdfImportController::class, 'importForm'])->name('import.image.form');
-    Route::post('/import/image', [PdfImportController::class, 'store'])->name('import.image.store');
-
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/test-notification', [SettingsController::class, 'sendTestNotification'])->name('settings.notification.test');
     Route::post('/settings/cron/run/{job}', [SettingsController::class, 'runCronJob'])->name('settings.cron.run');
     Route::post('/settings/purge/{type}', [SettingsController::class, 'purge'])->name('settings.purge');
     Route::get('/settings/backup/download', [SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
@@ -200,6 +198,7 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
 // Direct /v1/* routes (supports requests with or without /api prefix)
 Route::prefix('v1')->group(function () {
     Route::match(['GET', 'POST'], '/auth/login', [\App\Http\Controllers\Api\MobileApiController::class, 'login']);
+    Route::post('/auth/fcm-token', [\App\Http\Controllers\Api\CampaignController::class, 'updateFcmToken']);
 
     // Campaign White-Label Branding & Staff
     Route::post('/auth/campaign-branding', [\App\Http\Controllers\Api\CampaignController::class, 'campaignBranding']);

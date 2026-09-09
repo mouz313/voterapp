@@ -88,6 +88,48 @@
         </div>
     </div>
 
+    <!-- 1.5 Ground Campaign & Field Operations KPIs -->
+    <div class="card shadow-sm border-0 mb-3 bg-light">
+        <div class="card-body p-2.5 p-sm-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> Ground Campaign &amp; Field Canvassing Operations
+                </span>
+                <span class="badge bg-white text-secondary border small">Live Synchronized</span>
+            </div>
+            <div class="row g-2 text-center">
+                <div class="col-6 col-md-3">
+                    <div class="bg-white rounded p-2 border">
+                        <div class="text-muted small mb-0.5">Field Workers</div>
+                        <div class="fs-5 fw-bold text-dark">{{ number_format($stats['total_workers']) }}</div>
+                        <small class="text-success">{{ $stats['active_workers'] }} Active</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-white rounded p-2 border">
+                        <div class="text-muted small mb-0.5">Gharana Surveys</div>
+                        <div class="fs-5 fw-bold text-primary">{{ number_format($stats['total_surveys']) }}</div>
+                        <small class="text-muted">Door-to-door</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-white rounded p-2 border">
+                        <div class="text-muted small mb-0.5">Pakka Vote Bank</div>
+                        <div class="fs-5 fw-bold text-success">{{ number_format($stats['pakka_votes']) }}</div>
+                        <small class="text-muted">Confirmed</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-white rounded p-2 border">
+                        <div class="text-muted small mb-0.5">Turnout Parchis</div>
+                        <div class="fs-5 fw-bold text-info">{{ number_format($stats['turnout_parchis']) }}</div>
+                        <small class="text-muted">GOTV Issued</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 2. Tehsil Progress & Candidate License Matrices -->
     <div class="row g-3 mb-3">
         <!-- Tehsil & Delimitation Coverage Matrix -->

@@ -24,12 +24,21 @@
         <div class="card-body p-2 d-flex flex-wrap gap-1 align-items-center">
             <span class="small fw-bold text-muted me-2 ps-2"><i class="bi bi-compass me-1"></i> Jump to:</span>
             <a href="#api-auth-login" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">1. Candidate Login</a>
-            <a href="#api-check-device" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">2. Check Device Status</a>
-            <a href="#api-download" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">3. Download UC Dataset</a>
-            <a href="#api-sync-searches" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">4. Sync Search Logs</a>
-            <a href="#api-sync-heartbeat" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">5. Device Heartbeat</a>
-            <a href="#api-voter-search" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">6. Live Online Search</a>
-            <a href="#api-raw-endpoints" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">7. Raw Resources</a>
+            <a href="#api-campaign-branding" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">2. Campaign Branding</a>
+            <a href="#api-fcm-token" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">3. FCM Push Token</a>
+            <a href="#api-staff-login" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">4. Staff PIN Login</a>
+            <a href="#api-staff-block-data" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">5. Staff Block Data</a>
+            <a href="#api-staff-survey-sync" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">6. Survey Sync &amp; GPS</a>
+            <a href="#api-candidate-workers" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">7. Workers Management</a>
+            <a href="#api-candidate-war-room" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">8. War Room &amp; Turnout</a>
+            <a href="#api-camp-parchi" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">9. Camp Parchi</a>
+            <a href="#api-cron-matrix" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">10. Matrix Cron</a>
+            <a href="#api-check-device" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">11. Check Device</a>
+            <a href="#api-download" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">12. Download UC Dataset</a>
+            <a href="#api-sync-searches" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">13. Sync Searches</a>
+            <a href="#api-sync-heartbeat" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">14. Device Heartbeat</a>
+            <a href="#api-voter-search" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">15. Online Search</a>
+            <a href="#api-raw-endpoints" class="badge bg-light text-dark border text-decoration-none py-1.5 px-2">16. Raw Endpoints</a>
         </div>
     </div>
 
@@ -165,7 +174,442 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- 2. CHECK DEVICE AUTHORIZATION STATUS -->
+            <!-- 2. CAMPAIGN BRANDING (WHITE-LABEL THEME)  -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-campaign-branding">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-info">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success font-monospace px-2.5 py-1.5">POST</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/auth/campaign-branding</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/auth/campaign-branding</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/auth/campaign-branding')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Returns candidate party symbol, logos, slogan, and primary/accent hex colors for instant app UI morphing before or during login.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Request Payload</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>candidate_code</code></td><td>string</td><td><span class="badge bg-success-subtle text-success">Recommended</span></td><td>Unique code (e.g. <code>PTI-9089</code>)</td></tr>
+                                    <tr><td><code>email</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Candidate email address</td></tr>
+                                    <tr><td><code>uc_id</code></td><td>integer</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Assigned Union Council database ID</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "candidate_code": "PTI-9089",
+  "party_name": "Pakistan Tehreek-e-Insaf",
+  "candidate_symbol": "Bat",
+  "party_slogan": "Haqeeqi Azadi",
+  "primary_color": "#006633",
+  "accent_color": "#E31B23"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 3. FCM PUSH NOTIFICATION TOKEN REGISTRATION -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-fcm-token">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success font-monospace px-2.5 py-1.5">POST</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/auth/fcm-token</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/auth/fcm-token</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/auth/fcm-token')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Registers or refreshes Firebase Cloud Messaging device registration tokens for Candidate or Field Worker devices. Project ID: <code>voterapp-9ac02</code>.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Request Payload &amp; Headers</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>Authorization</code></td><td>header</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td><code>Bearer &lt;token&gt;</code> (Candidate or Worker)</td></tr>
+                                    <tr><td><code>fcm_token</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Firebase FCM device token from mobile SDK</td></tr>
+                                    <tr><td><code>user_type</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td><code>candidate</code> or <code>worker</code></td></tr>
+                                    <tr><td><code>device_uid</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Hardware device identifier</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "FCM device token registered successfully.",
+  "target_type": "candidate",
+  "device_id": 14
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 4. STAFF 4-DIGIT PIN AUTHENTICATION       -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-staff-login">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-success">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success font-monospace px-2.5 py-1.5">POST</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/staff/login</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/staff/login</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/staff/login')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Authenticates field canvassers with Candidate Code, 11-digit phone, and 4-digit PIN. Returns worker token and assigned census blocks list.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Request Payload</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>candidate_code</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Candidate unique code (e.g. <code>PTI-9089</code>)</td></tr>
+                                    <tr><td><code>phone</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Registered worker phone (e.g. <code>03001234567</code>)</td></tr>
+                                    <tr><td><code>pin</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>4-digit numeric PIN (e.g. <code>1234</code>)</td></tr>
+                                    <tr><td><code>device_uid</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Worker phone hardware identifier</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "Staff login successful.",
+  "worker_token": "vp_xwWfkODCHw3Zjtck6LUNoOs4pWkxos2u...",
+  "worker": {
+    "id": 12,
+    "name": "Tariq Mehmood",
+    "assigned_block_codes": ["185010401", "185010402"],
+    "total_assigned_blocks": 2
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 5. STAFF BLOCK DATA DOWNLOAD               -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-staff-block-data">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-primary">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary font-monospace px-2.5 py-1.5">GET</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/staff/block/data</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/staff/block/data</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/staff/block/data')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Downloads gharanas and registered voters for worker's assigned census blocks (supports multi-block comma separated assignments).
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-card-checklist me-1 text-primary"></i> Query / Header Parameters</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>Authorization</code></td><td>header</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td><code>Bearer &lt;worker_token&gt;</code></td></tr>
+                                    <tr><td><code>block_code</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Specific block code (if worker has multiple)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "assigned_blocks": ["185010401", "185010402"],
+  "total_gharanas": 145,
+  "total_voters": 580,
+  "gharanas": [
+    {
+      "block_code": "185010401",
+      "gharana_no": "001",
+      "head_name": "Chaudhry Riaz Ahmad",
+      "influencer_phone": "03214567890",
+      "party_inclination": "pakka",
+      "total_voters": 4
+    }
+  ]
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 6. STAFF SURVEY BATCH SYNC & GPS          -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-staff-survey-sync">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-danger">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success font-monospace px-2.5 py-1.5">POST</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/staff/survey/sync</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/staff/survey/sync</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/staff/survey/sync')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Submits offline household surveys. Records <strong>Anti-Fraud GPS coordinates</strong>, stores <strong>influencer phone</strong> for 1-tap War Room calling, and triggers <strong>Instant Firebase Push Notifications</strong> if VIP visit is flagged.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Survey Object Parameters</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>block_code</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Census block code</td></tr>
+                                    <tr><td><code>gharana_no</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Household number (e.g. <code>042</code>)</td></tr>
+                                    <tr><td><code>party_inclination</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td><code>pakka</code>, <code>kacha</code>, <code>mukhalif</code>, <code>neutral</code></td></tr>
+                                    <tr><td><code>influencer_phone</code></td><td>string</td><td><span class="badge bg-success-subtle text-success">Recommended</span></td><td>Elder phone for 1-tap War Room direct call</td></tr>
+                                    <tr><td><code>is_vip_visit_requested</code></td><td>boolean</td><td><span class="badge bg-warning-subtle text-dark">Alert Trigger</span></td><td>If <code>true</code>, fires instant FCM alert to Candidate</td></tr>
+                                    <tr><td><code>latitude</code> / <code>longitude</code></td><td>decimal</td><td><span class="badge bg-info-subtle text-info">Anti-Fraud</span></td><td>Ground GPS coordinates (e.g. 31.5204, 74.3587)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "1 survey(s) synced successfully.",
+  "synced_count": 1,
+  "vip_alerts_sent": 1,
+  "last_sync_at": "2026-09-09T22:30:00+05:00"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 7. CANDIDATE WORKERS CRUD MANAGEMENT       -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-candidate-workers">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-info">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary font-monospace px-2.5 py-1.5">GET / POST / PUT / DELETE</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/candidate/workers</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/candidate/workers</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/candidate/workers')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Self-service worker management for candidates. Create field workers with auto-generated 4-digit PINs and instant 1-tap WhatsApp sharing links.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Create Worker Parameters (POST)</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>name</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>Worker full name</td></tr>
+                                    <tr><td><code>phone</code></td><td>string</td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td>11-digit phone (e.g. <code>03017654321</code>)</td></tr>
+                                    <tr><td><code>assigned_block_code</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Block code(s) (e.g. <code>185010401, 185010402</code>)</td></tr>
+                                    <tr><td><code>pin</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Auto-Gen</span></td><td>4-digit PIN (auto-generated if omitted)</td></tr>
+                                    <tr><td><code>role</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Designation (e.g. <code>Field Worker</code>)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample (POST 201)</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "Field worker created successfully.",
+  "worker": {
+    "id": 26,
+    "name": "Ali Hassan",
+    "phone": "03017654321",
+    "pin": "7482",
+    "assigned_block_code": "185010403",
+    "whatsapp_share_link": "https://api.whatsapp.com/send?phone=923017654321&text=..."
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 8. CANDIDATE EXECUTIVE LIVE WAR ROOM       -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-candidate-war-room">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-success">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary font-monospace px-2.5 py-1.5">GET</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/candidate/war-room</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/candidate/war-room</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/candidate/war-room')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Executive mobile dashboard for candidate. Aggregates Pakka/Kacha/Mukhalif votes, coverage percentage, pending VIP visit requests, and <strong>Hourly Turnout Breakdown</strong> across 4 time slots.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-card-checklist me-1 text-primary"></i> Request Headers</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Header</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>Authorization</code></td><td><span class="badge bg-danger-subtle text-danger">Yes</span></td><td><code>Bearer &lt;candidate_token&gt;</code></td></tr>
+                                </tbody>
+                            </table>
+                            <div class="p-2 rounded bg-light border small mt-2">
+                                <i class="bi bi-clock me-1 text-primary"></i> <strong>Hourly Turnout Slots:</strong>
+                                <code>slot_08_10</code> (08:00 - 10:00), <code>slot_10_12</code> (10:00 - 12:00), <code>slot_12_14</code> (12:00 - 14:00), <code>slot_14_17</code> (14:00 - 17:00).
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "summary": {
+    "pakka_votes": 3210,
+    "kacha_votes": 1450,
+    "mukhalif_votes": 890,
+    "coverage_percentage": 68.4
+  },
+  "hourly_turnout": {
+    "slot_08_10": 420,
+    "slot_10_12": 890,
+    "slot_12_14": 610,
+    "slot_14_17": 980,
+    "total_turnout_votes": 2900
+  },
+  "vip_hit_list": [
+    {
+      "gharana_no": "042",
+      "influencer_phone": "03009876543"
+    }
+  ]
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 9. GOTV CAMP ISSUE THERMAL PARCHI          -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-camp-parchi">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success font-monospace px-2.5 py-1.5">POST</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/camp/issue-parchi</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/camp/issue-parchi</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/camp/issue-parchi')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Records election day voter turnout when a thermal slip is printed at the candidate's GOTV polling camp.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-box-arrow-in-right me-1 text-primary"></i> Request Payload</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>cnic</code></td><td>string</td><td><span class="badge bg-success-subtle text-success">Recommended</span></td><td>13-digit CNIC (e.g. <code>35201-1234567-1</code>)</td></tr>
+                                    <tr><td><code>voter_id</code></td><td>integer</td><td><span class="badge bg-secondary-subtle text-secondary">Alternative</span></td><td>Database voter ID</td></tr>
+                                    <tr><td><code>block_code</code> + <code>gharana_no</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Alternative</span></td><td>Block &amp; household number</td></tr>
+                                    <tr><td><code>agent_name</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Camp booth operator name</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "Parchi issued and voter turnout recorded.",
+  "turnout_recorded_at": "2026-09-09T14:35:20+05:00"
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 10. CAMPAIGN MATRIX BACKGROUND CRON        -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm mb-3" id="api-cron-matrix">
+                <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-secondary">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary font-monospace px-2.5 py-1.5">GET</span>
+                        <code class="fs-6 fw-bold text-dark font-mono">/api/v1/cron/process-campaign-matrix</code>
+                        <span class="badge bg-light text-muted border d-none d-md-inline">or /v1/cron/process-campaign-matrix</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ $baseUrl }}/api/v1/cron/process-campaign-matrix')">
+                        <i class="bi bi-copy me-1"></i> Copy Endpoint
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Lightweight automated cron job invoked periodically (e.g. cron-job.org) to pre-aggregate campaign statistics for instant caching.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-card-checklist me-1 text-primary"></i> Query Parameters</h6>
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>candidate_id</code></td><td>integer</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Specific candidate ID (processes all if omitted)</td></tr>
+                                    <tr><td><code>key</code></td><td>string</td><td><span class="badge bg-secondary-subtle text-secondary">Optional</span></td><td>Cron secret key authorization</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-braces me-1 text-success"></i> Response Sample</h6>
+                            <pre class="bg-dark text-light p-3 rounded font-mono small mb-0 overflow-auto">{
+  "status": true,
+  "message": "Campaign matrix processed successfully.",
+  "processed_candidates": 6,
+  "execution_time_ms": 32.4
+}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 11. CHECK DEVICE AUTHORIZATION STATUS     -->
             <!-- ========================================== -->
             <div class="card shadow-sm mb-3" id="api-check-device">
                 <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-2 border-start border-4 border-primary">

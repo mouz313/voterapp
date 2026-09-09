@@ -14,6 +14,7 @@ class CandidateDevice extends Model
         'user_id',
         'device_uid',
         'api_token',
+        'fcm_token',
         'device_name',
         'platform',
         'app_version',
@@ -24,6 +25,7 @@ class CandidateDevice extends Model
 
     protected $hidden = [
         'api_token',
+        'fcm_token',
     ];
 
     protected function casts(): array

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID', 'voterapp-9ac02'),
+        'project_number' => env('FIREBASE_PROJECT_NUMBER', '145402386946'),
+        'server_key' => env('FIREBASE_SERVER_KEY', null),
+    ],
+
 ];

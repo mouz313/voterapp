@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BlockCode;
 use App\Models\CandidateDevice;
+use App\Models\CampaignWorker;
+use App\Models\GharanaSurvey;
 use App\Models\District;
 use App\Models\NationalAssembly;
 use App\Models\PollingStation;
@@ -22,7 +24,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        // 1. High-Level Electoral KPIs
+        // 1. High-Level Electoral KPIs & Campaign Operations
         $stats = [
             'national_assemblies' => NationalAssembly::count(),
             'provincial_assemblies' => ProvincialAssembly::count(),
@@ -34,6 +36,11 @@ class DashboardController extends Controller
             'candidates' => User::where('role', 'candidate')->count(),
             'active_devices' => CandidateDevice::where('is_revoked', false)->count(),
             'total_searches' => (int) SearchLog::sum('results_count'),
+            'total_workers' => CampaignWorker::count(),
+            'active_workers' => CampaignWorker::where('is_active', true)->count(),
+            'total_surveys' => GharanaSurvey::count(),
+            'pakka_votes' => GharanaSurvey::where('sentiment', 'pakka')->count(),
+            'turnout_parchis' => GharanaSurvey::whereNotNull('parchi_issued_at')->count(),
         ];
 
         // 2. Tehsil $\rightarrow$ UC $\rightarrow$ Block Delimitation & Progress Matrix

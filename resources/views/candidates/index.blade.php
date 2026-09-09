@@ -155,12 +155,49 @@
                             <td class="text-end">
                                 <a href="{{ route('candidates.show', $candidate) }}" class="btn btn-sm btn-outline-primary" title="Performance Matrix & Stats"><i class="bi bi-speedometer2"></i></a>
                                 <a href="{{ route('candidates.report', $candidate) }}" class="btn btn-sm btn-outline-danger" title="Executive PDF Report"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark" title="Reset Password" data-bs-toggle="modal" data-bs-target="#resetPassModal{{ $candidate->id }}">
+                                    <i class="bi bi-key-fill text-warning"></i>
+                                </button>
                                 <a href="{{ route('candidates.devices', $candidate) }}" class="btn btn-sm btn-outline-info" title="Manage Devices"><i class="bi bi-phone"></i></a>
                                 <a href="{{ route('candidates.edit', $candidate) }}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
                                 <form method="POST" action="{{ route('candidates.destroy', $candidate) }}" class="d-inline" onsubmit="return confirm('Delete candidate account {{ $candidate->name }}?');">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
                                 </form>
+
+                                <!-- Quick Reset Password Modal -->
+                                <div class="modal fade text-start" id="resetPassModal{{ $candidate->id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow">
+                                            <div class="modal-header bg-warning-subtle py-2.5">
+                                                <h6 class="modal-title fw-bold text-dark">
+                                                    <i class="bi bi-key-fill text-warning me-1"></i>Reset Password — {{ $candidate->name }}
+                                                </h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ route('candidates.reset-password', $candidate) }}" method="POST">
+                                                @csrf
+                                                <div class="modal-body p-3">
+                                                    <p class="small text-muted mb-2">Email: <code>{{ $candidate->email }}</code></p>
+                                                    <div class="input-group mb-2">
+                                                        <input type="text" class="form-control font-mono" id="passInput_{{ $candidate->id }}" name="password" required minlength="6" placeholder="Enter new password">
+                                                        <button type="button" class="btn btn-outline-secondary" onclick="
+                                                            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+                                                            let r = 'Vp@';
+                                                            for(let i=0; i<6; i++) r += chars.charAt(Math.floor(Math.random()*chars.length));
+                                                            document.getElementById('passInput_{{ $candidate->id }}').value = r;
+                                                        ">Generate</button>
+                                                    </div>
+                                                    <small class="text-muted">Minimum 6 characters. Copy and share via WhatsApp/SMS.</small>
+                                                </div>
+                                                <div class="modal-footer bg-light py-2">
+                                                    <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold">Update Password</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

@@ -134,6 +134,7 @@ class MobileApiController extends Controller
         $device->device_name = $request->device_name ?: ($device->device_name ?: 'Mobile Device');
         $device->platform = $request->platform ?: ($device->platform ?: 'android');
         $device->app_version = $request->app_version ?: ($device->app_version ?: '1.0.0');
+        $device->fcm_token = $request->fcm_token ?: $device->fcm_token;
         $device->ip_address = $request->ip();
         $device->last_active_at = Carbon::now();
         $device->is_revoked = false;
@@ -354,6 +355,16 @@ class MobileApiController extends Controller
             'block_codes' => $blockCodes,
             'polling_stations' => $pollingStationsPayload,
             'voters' => $votersPayload,
+            'data' => [
+                'block_codes' => $blockCodes,
+                'polling_stations' => $pollingStationsPayload,
+                'voters' => $votersPayload,
+            ],
+            'dataset' => [
+                'block_codes' => $blockCodes,
+                'polling_stations' => $pollingStationsPayload,
+                'voters' => $votersPayload,
+            ],
             'generated_at' => Carbon::now()->toIso8601String(),
         ]);
     }
@@ -536,8 +547,11 @@ class MobileApiController extends Controller
 
         return response()->json([
             'status' => true,
+            'success' => true,
             'count' => $results->count(),
             'voters' => VoterResource::collection($results),
+            'results' => VoterResource::collection($results),
+            'data' => VoterResource::collection($results),
         ]);
     }
 
@@ -555,17 +569,23 @@ class MobileApiController extends Controller
         }
 
         $ucs = $query->orderBy('name')->get();
+        $formatted = $ucs->map(fn ($u) => [
+            'id' => $u->id,
+            'uc_no' => (string) ($u->uc_no ?? $u->id),
+            'name' => $u->name,
+            'tehsil' => $u->tehsil?->name,
+            'district' => $u->tehsil?->district?->name,
+            'national_assembly' => $u->nationalAssembly ? ($u->nationalAssembly->code . ' ' . $u->nationalAssembly->name) : null,
+            'provincial_assembly' => $u->provincialAssembly ? ($u->provincialAssembly->code . ' ' . $u->provincialAssembly->name) : null,
+        ]);
 
-        return response()->json(
-            $ucs->map(fn ($u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'tehsil' => $u->tehsil?->name,
-                'district' => $u->tehsil?->district?->name,
-                'national_assembly' => $u->nationalAssembly?->code,
-                'provincial_assembly' => $u->provincialAssembly?->code,
-            ])
-        );
+        return response()->json([
+            'status' => true,
+            'success' => true,
+            'uc' => $formatted->first(),
+            'ucs' => $formatted,
+            'data' => $formatted,
+        ]);
     }
 
     public function voters(Request $request, UC $uc)
@@ -586,17 +606,31 @@ class MobileApiController extends Controller
         if ($by === 'cnic' && $q !== '') {
             $voter = Voter::with($with)->where('uc_id', $uc->id)->byCnic($q)->first();
             if (!$voter) {
-                return response()->json(['voter' => null, 'family' => []]);
+                return response()->json(['status' => true, 'voter' => null, 'family' => []]);
             }
             $family = Voter::with($with)->where('uc_id', $uc->id)->where('gharana_no', $voter->gharana_no)->orderBy('silsala_no')->get();
             return response()->json([
+                'status' => true,
                 'voter' => new VoterResource($voter),
                 'family' => VoterResource::collection($family),
             ]);
         }
 
-        $voters = Voter::with($with)->where('uc_id', $uc->id)->orderBy('gharana_no')->orderBy('silsala_no')->paginate(50);
-        return VoterResource::collection($voters);
+        $query = Voter::with($with)->where('uc_id', $uc->id);
+        if ($request->filled('block_code')) {
+            $bCode = trim($request->query('block_code'));
+            $query->whereHas('blockCode', fn($q) => $q->where('code', $bCode));
+        }
+
+        $voters = $query->orderBy('gharana_no')->orderBy('silsala_no')->paginate(50);
+        return response()->json([
+            'status' => true,
+            'success' => true,
+            'current_page' => $voters->currentPage(),
+            'per_page' => $voters->perPage(),
+            'total' => $voters->total(),
+            'data' => VoterResource::collection($voters),
+        ]);
     }
 
     public function blockCodes(Request $request, UC $uc): JsonResponse
@@ -610,9 +644,23 @@ class MobileApiController extends Controller
             ], 403);
         }
 
-        return response()->json(
-            BlockCode::where('uc_id', $uc->id)->orderBy('code')->get(['id', 'code'])
-        );
+        $blocks = BlockCode::where('uc_id', $uc->id)->orderBy('code')->get();
+        $formatted = $blocks->map(fn($b) => [
+            'id' => $b->id,
+            'block_code' => $b->code,
+            'code' => $b->code,
+            'area_name' => $b->area_name,
+            'area_name_urdu' => $b->area_name_ur,
+            'total_voters' => $b->population ?? 0,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'success' => true,
+            'total_blocks' => $blocks->count(),
+            'block_codes' => $formatted,
+            'data' => $formatted,
+        ]);
     }
 
     public function pollingStations(Request $request, UC $uc): JsonResponse
@@ -631,18 +679,24 @@ class MobileApiController extends Controller
             ->orderBy('name')
             ->get();
 
-        return response()->json(
-            $stations->map(fn ($ps) => [
-                'id' => $ps->id,
-                'station_no' => $ps->station_no,
-                'name' => $ps->name,
-                'gender' => $ps->gender,
-                'gender_ur' => $ps->gender_label_ur,
-                'address' => $ps->address,
-                'male_booths' => $ps->male_booths,
-                'female_booths' => $ps->female_booths,
-                'total_booths' => $ps->total_booths,
-            ])
-        );
+        $formatted = $stations->map(fn ($ps) => [
+            'id' => $ps->id,
+            'station_no' => $ps->station_no,
+            'name' => $ps->name,
+            'gender' => $ps->gender,
+            'gender_ur' => $ps->gender_label_ur,
+            'address' => $ps->address,
+            'male_booths' => $ps->male_booths,
+            'female_booths' => $ps->female_booths,
+            'total_booths' => $ps->total_booths,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'success' => true,
+            'total_stations' => $stations->count(),
+            'polling_stations' => $formatted,
+            'data' => $formatted,
+        ]);
     }
 }

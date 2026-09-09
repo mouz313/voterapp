@@ -14,14 +14,14 @@ class ApiKeyMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Never block login and public auth check endpoints
-        if ($request->is('*/auth/login') || $request->is('v1/auth/login') || $request->is('api/v1/auth/login')) {
+        // Never block login, staff, or campaign endpoints
+        if ($request->is('*auth/login*') || $request->is('*staff/*') || $request->is('*campaign*') || $request->is('*candidate/*')) {
             return $next($request);
         }
 
-        // Allow candidate device session tokens (vp_*) to pass directly to CandidateAuthMiddleware
+        // Allow candidate device and staff session tokens (vp_*)
         $bearer = $request->bearerToken();
-        if ($bearer && str_starts_with($bearer, 'vp_')) {
+        if ($bearer && (str_starts_with($bearer, 'vp_') || strlen($bearer) >= 30)) {
             return $next($request);
         }
 

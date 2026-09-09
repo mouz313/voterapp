@@ -22,6 +22,7 @@ class CampaignWorker extends Model
         'assigned_block_code',
         'device_uid',
         'api_token',
+        'fcm_token',
         'last_sync_at',
         'is_active',
     ];
@@ -50,7 +51,7 @@ class CampaignWorker extends Model
 
     public function generateApiToken(): string
     {
-        $token = Str::random(60);
+        $token = 'vp_' . Str::random(56);
         $this->update(['api_token' => hash('sha256', $token)]);
         return $token;
     }

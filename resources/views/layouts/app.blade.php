@@ -125,9 +125,6 @@
                 <a href="{{ route('polling-stations.import.form') }}" class="sidebar-link {{ Request::is('polling-stations/import*') ? 'active' : '' }}">
                     <i class="bi bi-upload"></i> <span>Import Stations</span>
                 </a>
-                <a href="{{ route('import.image.form') }}" class="sidebar-link {{ Request::is('import/image*') ? 'active' : '' }}">
-                    <i class="bi bi-camera"></i> <span>Urdu OCR List Scanner</span>
-                </a>
 
                 <p class="sidebar-heading">Developer & APIs</p>
                 <a href="{{ route('api.docs') }}" class="sidebar-link {{ Request::is('api-docs*') ? 'active' : '' }}">

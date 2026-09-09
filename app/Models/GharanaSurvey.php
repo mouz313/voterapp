@@ -16,12 +16,15 @@ class GharanaSurvey extends Model
         'gharana_no',
         'sentiment',
         'influencer_name',
+        'influencer_phone',
         'voter_count',
         'notes',
         'is_vip_visit_requested',
         'visited_by_worker_id',
         'visited_at',
         'parchi_issued_at',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
@@ -30,6 +33,8 @@ class GharanaSurvey extends Model
         'is_vip_visit_requested' => 'boolean',
         'visited_at' => 'datetime',
         'parchi_issued_at' => 'datetime',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function candidate(): BelongsTo
