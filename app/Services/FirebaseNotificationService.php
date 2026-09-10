@@ -186,6 +186,15 @@ class FirebaseNotificationService
 
             $errorStatus = $v1Resp->json('error.status');
             $errorMsg = $v1Resp->json('error.message');
+            $errorCode = $v1Resp->json('error.details.0.errorCode') ?? $errorStatus;
+
+            // Auto-clean dead/invalid tokens from database so future broadcasts remain 100% clean
+            if ($errorCode === 'INVALID_ARGUMENT' || $errorCode === 'UNREGISTERED') {
+                CandidateDevice::where('fcm_token', $fcmToken)->update(['fcm_token' => null]);
+                CampaignWorker::where('fcm_token', $fcmToken)->update(['fcm_token' => null]);
+                Log::info("[FCM Token Auto-Clean] Cleared invalid/unregistered token from DB: " . substr($fcmToken, 0, 16) . "...");
+            }
+
             Log::warning("[FCM v1 Warning] Status: {$v1Resp->status()} | Error: {$errorStatus} ({$errorMsg})");
             return false;
         } catch (\Throwable $e) {
