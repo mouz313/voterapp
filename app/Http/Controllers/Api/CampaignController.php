@@ -470,7 +470,7 @@ class CampaignController extends Controller
                 $cleanPhone = '92' . substr($cleanPhone, 1);
             }
 
-            $waMsg = "Salam {$worker->name}!\n\nYou have been assigned as a Field Worker for {$candidate->name}'s election campaign.\n\n📱 *VoterApp Login Details:*\n🔹 Candidate Code: *{$candidate->candidate_code}*\n🔹 Worker PIN: *{$pin}*\n🔹 Assigned Block: *{$worker->assigned_block_code}*\n\nPlease open the VoterApp mobile app, enter Candidate Code & PIN on the Field Worker tab, and start the door-to-door survey.";
+            $waMsg = "Salam {$worker->name}!\n\nYou have been assigned as a Field Worker / Camp Agent for {$candidate->name}'s election campaign.\n\n📱 *VoterApp Login Details:*\n🔹 Candidate Code: *{$candidate->candidate_code}*\n🔹 Worker PIN: *{$pin}*\n🔹 Assigned Blocks: *{$worker->assigned_block_code}*\n\nPlease open the VoterApp mobile app, select \"Field Worker\" tab, enter Candidate Code & PIN above, and start door-to-door survey or voter search.";
 
             $waUrl = !empty($cleanPhone)
                 ? "https://wa.me/{$cleanPhone}?text=" . rawurlencode($waMsg)

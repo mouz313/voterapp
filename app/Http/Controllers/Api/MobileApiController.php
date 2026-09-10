@@ -97,11 +97,9 @@ class MobileApiController extends Controller
             ], 403);
         }
 
-        if ($user->role === 'candidate' && !$user->uc_id) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No Union Council (UC) has been assigned to this candidate account yet. Please contact the administrator.',
-            ], 403);
+        if ($user->role === 'candidate' && empty($user->candidate_code)) {
+            $user->candidate_code = \App\Models\User::generateUniqueCandidateCode($user->party_name);
+            $user->save();
         }
 
         $deviceUid = trim($request->device_uid);
@@ -160,6 +158,7 @@ class MobileApiController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'candidate_code' => $user->candidate_code,
                 'max_devices' => null,
                 'active_devices' => $activeDevicesCount,
             ],
