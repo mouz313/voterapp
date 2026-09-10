@@ -36,10 +36,18 @@ Route::prefix('v1')->group(function () {
     Route::get('/candidate/war-room', [\App\Http\Controllers\Api\CampaignController::class, 'candidateWarRoom']);
 
     // Election Day Camp Thermal Parchi Issuance (GOTV Live Turnout)
-    Route::post('/camp/issue-parchi', [\App\Http\Controllers\Api\CampaignController::class, 'campIssueParchi']);
+    // Protected at Gateway by campaign.worker.auth Middleware
+    Route::middleware(['campaign.worker.auth'])->group(function () {
+        Route::post('/camp/issue-parchi', [\App\Http\Controllers\Api\CampaignController::class, 'campIssueParchi']);
+    });
 
-    // Background Cron Automation (cron-job.org)
-    Route::get('/cron/process-campaign-matrix', [\App\Http\Controllers\Api\CampaignController::class, 'processCampaignMatrix']);
+    // --------------------------------------------------------------------------
+    // Internal Cron Automation Engine (cron-job.org / Server Scheduler Only)
+    // Strictly protected via internal CRON_SECRET (X-Cron-Secret header / ?secret=)
+    // --------------------------------------------------------------------------
+    Route::prefix('cron')->group(function () {
+        Route::get('/process-campaign-matrix', [\App\Http\Controllers\Api\CampaignController::class, 'processCampaignMatrix']);
+    });
 
     // 2. Protected Candidate Device Endpoints (Enforcing Token, Revocation & UC Scope)
     Route::middleware([CandidateAuthMiddleware::class])->group(function () {

@@ -778,14 +778,14 @@ class CampaignController extends Controller
      */
     public function campIssueParchi(Request $request): JsonResponse
     {
-        // Auth check: Worker or Candidate token required
-        $worker = $this->getAuthenticatedWorker($request);
+        // Auth check: Worker or Candidate token (resolved via CampaignWorkerAuthMiddleware or fallback)
+        $worker = $request->attributes->get('campaign_worker') ?: $this->getAuthenticatedWorker($request);
         $candidate = null;
 
         if ($worker) {
             $candidate = $worker->candidate;
         } else {
-            $candidate = $this->getAuthenticatedCandidate($request);
+            $candidate = $request->attributes->get('candidate_user') ?: $this->getAuthenticatedCandidate($request);
         }
 
         if (!$candidate) {

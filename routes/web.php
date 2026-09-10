@@ -211,8 +211,15 @@ Route::prefix('v1')->group(function () {
     Route::put('/candidate/workers/{id}', [\App\Http\Controllers\Api\CampaignController::class, 'updateWorker']);
     Route::delete('/candidate/workers/{id}', [\App\Http\Controllers\Api\CampaignController::class, 'deleteWorker']);
     Route::get('/candidate/war-room', [\App\Http\Controllers\Api\CampaignController::class, 'candidateWarRoom']);
-    Route::post('/camp/issue-parchi', [\App\Http\Controllers\Api\CampaignController::class, 'campIssueParchi']);
-    Route::get('/cron/process-campaign-matrix', [\App\Http\Controllers\Api\CampaignController::class, 'processCampaignMatrix']);
+    // Election Day Camp Thermal Parchi Issuance (GOTV Live Turnout)
+    Route::middleware(['campaign.worker.auth'])->group(function () {
+        Route::post('/camp/issue-parchi', [\App\Http\Controllers\Api\CampaignController::class, 'campIssueParchi']);
+    });
+
+    // Internal Cron Automation Engine (Protected by X-Cron-Secret)
+    Route::prefix('cron')->group(function () {
+        Route::get('/process-campaign-matrix', [\App\Http\Controllers\Api\CampaignController::class, 'processCampaignMatrix']);
+    });
 
     Route::middleware([\App\Http\Middleware\CandidateAuthMiddleware::class])->group(function () {
         Route::get('/auth/check-device', [\App\Http\Controllers\Api\MobileApiController::class, 'checkDevice']);

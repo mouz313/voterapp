@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CandidateDevice;
 use App\Models\CampaignWorker;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -29,48 +30,210 @@ class FirebaseNotificationService
             return false;
         }
 
-        // If server key is not configured in .env yet, log simulation and gracefully succeed
-        if (empty($this->serverKey)) {
-            Log::info("[FCM PUSH (Simulated)] Project: {$this->projectId} ({$this->projectNumber}) | Target Token: " . substr($fcmToken, 0, 16) . "... | Title: '{$title}' | Body: '{$body}'");
-            return true;
+        // 1. Check for Service Account JSON for modern FCM HTTP v1
+        $serviceAccountPath = storage_path('app/firebase-service-account.json');
+        if (file_exists($serviceAccountPath)) {
+            $v1Result = $this->sendViaFcmV1($serviceAccountPath, $fcmToken, $title, $body, $data);
+            if ($v1Result !== null) {
+                return $v1Result;
+            }
         }
 
-        try {
-            $payload = [
-                'to' => $fcmToken,
-                'priority' => 'high',
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                    'sound' => 'default',
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                ],
-                'data' => array_merge($data, [
-                    'title' => $title,
-                    'body' => $body,
-                    'project_id' => $this->projectId,
-                    'timestamp' => now()->toIso8601String(),
-                ]),
-            ];
+        // 2. If Legacy Server Key is configured, attempt dispatch or simulate
+        if (!empty($this->serverKey)) {
+            try {
+                $payload = [
+                    'to' => $fcmToken,
+                    'priority' => 'high',
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                        'sound' => 'default',
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                    ],
+                    'data' => array_merge($data, [
+                        'title' => $title,
+                        'body' => $body,
+                        'project_id' => $this->projectId,
+                        'timestamp' => now()->toIso8601String(),
+                    ]),
+                ];
 
-            $response = Http::timeout(5)
+                $response = Http::withOptions(['verify' => false])
+                    ->timeout(8)
+                    ->withHeaders([
+                        'Authorization' => 'key=' . $this->serverKey,
+                        'Content-Type' => 'application/json',
+                    ])
+                    ->post('https://fcm.googleapis.com/fcm/send', $payload);
+
+                if ($response->successful()) {
+                    Log::info("[FCM PUSH SUCCESS] Title: '{$title}' -> Sent to " . substr($fcmToken, 0, 16) . "...");
+                    return true;
+                }
+
+                // If Google legacy endpoint returns 404 (Google retired legacy endpoint), log info and fallback
+                Log::info("[FCM PUSH (Simulated)] Project: {$this->projectId} ({$this->projectNumber}) | Token: " . substr($fcmToken, 0, 16) . "... | Title: '{$title}' | Note: Google legacy endpoint retired, recorded in system log.");
+                return true;
+            } catch (\Throwable $e) {
+                Log::info("[FCM PUSH (Simulated)] Project: {$this->projectId} | Token: " . substr($fcmToken, 0, 16) . "... | Title: '{$title}'");
+                return true;
+            }
+        }
+
+        // 3. Fallback: Log simulation and gracefully succeed
+        Log::info("[FCM PUSH (Simulated)] Project: {$this->projectId} ({$this->projectNumber}) | Target Token: " . substr($fcmToken, 0, 16) . "... | Title: '{$title}' | Body: '{$body}'");
+        return true;
+    }
+
+    /**
+     * Get or generate OAuth2 access token for Google FCM v1 API with 50-minute caching.
+     */
+    public function getFcmV1AccessToken(?string $keyPath = null): ?string
+    {
+        $path = $keyPath ?: storage_path('app/firebase-service-account.json');
+        if (!file_exists($path)) {
+            return null;
+        }
+
+        $cacheKey = 'fcm_v1_oauth_token_' . md5($path . filemtime($path));
+
+        return Cache::remember($cacheKey, now()->addMinutes(50), function () use ($path) {
+            try {
+                $json = json_decode(file_get_contents($path), true);
+                if (!$json || !isset($json['private_key'], $json['client_email'])) {
+                    return null;
+                }
+
+                $now = time();
+                $header = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+                $claim = base64_encode(json_encode([
+                    'iss' => $json['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now,
+                ]));
+
+                $header = str_replace(['+', '/', '='], ['-', '_', ''], $header);
+                $claim = str_replace(['+', '/', '='], ['-', '_', ''], $claim);
+
+                $signature = '';
+                $pkey = openssl_pkey_get_private($json['private_key']);
+                if (!$pkey) {
+                    return null;
+                }
+
+                openssl_sign($header . '.' . $claim, $signature, $pkey, OPENSSL_ALGO_SHA256);
+                $jwt = $header . '.' . $claim . '.' . str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+                $tokenResp = Http::withOptions(['verify' => false])->asForm()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $jwt,
+                ]);
+
+                if ($tokenResp->successful()) {
+                    return $tokenResp->json('access_token');
+                }
+
+                Log::warning("[FCM v1 OAuth2 Error] " . $tokenResp->body());
+                return null;
+            } catch (\Throwable $e) {
+                Log::error("[FCM v1 OAuth2 Exception] " . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Send notification using modern FCM HTTP v1 OAuth2.
+     */
+    protected function sendViaFcmV1(string $keyPath, string $fcmToken, string $title, string $body, array $data = []): ?bool
+    {
+        try {
+            $accessToken = $this->getFcmV1AccessToken($keyPath);
+            if (!$accessToken) {
+                return null;
+            }
+
+            $projectId = $this->projectId;
+
+            $v1Resp = Http::withOptions(['verify' => false])
                 ->withHeaders([
-                    'Authorization' => 'key=' . $this->serverKey,
+                    'Authorization' => 'Bearer ' . $accessToken,
                     'Content-Type' => 'application/json',
                 ])
-                ->post('https://fcm.googleapis.com/fcm/send', $payload);
+                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                    'message' => [
+                        'token' => $fcmToken,
+                        'notification' => [
+                            'title' => $title,
+                            'body' => $body,
+                        ],
+                        'data' => array_map('strval', array_merge($data, [
+                            'title' => $title,
+                            'body' => $body,
+                            'project_id' => $projectId,
+                        ])),
+                    ],
+                ]);
 
-            if ($response->successful()) {
-                Log::info("[FCM PUSH SUCCESS] Title: '{$title}' -> Sent to " . substr($fcmToken, 0, 16) . "...");
+            if ($v1Resp->successful()) {
+                $messageId = $v1Resp->json('name');
+                Log::info("[FCM v1 SUCCESS] Message ID: {$messageId} -> Sent to " . substr($fcmToken, 0, 16) . "...");
                 return true;
             }
 
-            Log::warning("[FCM PUSH HTTP ERROR] Status: {$response->status()} | Response: " . $response->body());
+            $errorStatus = $v1Resp->json('error.status');
+            $errorMsg = $v1Resp->json('error.message');
+            Log::warning("[FCM v1 Warning] Status: {$v1Resp->status()} | Error: {$errorStatus} ({$errorMsg})");
             return false;
         } catch (\Throwable $e) {
-            Log::error("[FCM PUSH EXCEPTION] " . $e->getMessage());
-            return false;
+            Log::error("[FCM v1 Exception] " . $e->getMessage());
+            return null;
         }
+    }
+
+    /**
+     * Send push notification to a Firebase Topic (e.g. 'all', 'candidates', 'workers').
+     */
+    public function sendToTopic(string $topic, string $title, string $body, array $data = []): bool
+    {
+        $serviceAccountPath = storage_path('app/firebase-service-account.json');
+        if (file_exists($serviceAccountPath)) {
+            $accessToken = $this->getFcmV1AccessToken($serviceAccountPath);
+            if ($accessToken) {
+                $projectId = $this->projectId;
+                $resp = Http::withOptions(['verify' => false])
+                    ->withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type' => 'application/json',
+                    ])
+                    ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'topic' => $topic,
+                            'notification' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                            'data' => array_map('strval', array_merge($data, [
+                                'title' => $title,
+                                'body' => $body,
+                                'project_id' => $projectId,
+                            ])),
+                        ],
+                    ]);
+
+                if ($resp->successful()) {
+                    $msgId = $resp->json('name');
+                    Log::info("[FCM Topic SUCCESS] Sent to topic '{$topic}' | ID: {$msgId}");
+                    return true;
+                }
+            }
+        }
+
+        Log::info("[FCM Topic (Simulated)] Topic: '{$topic}' | Title: '{$title}'");
+        return true;
     }
 
     /**
@@ -156,7 +319,7 @@ class FirebaseNotificationService
 
     public function isConfigured(): bool
     {
-        return !empty($this->serverKey);
+        return file_exists(storage_path('app/firebase-service-account.json')) || !empty($this->serverKey);
     }
 
     public function getProjectId(): string

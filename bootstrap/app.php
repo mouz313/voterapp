@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'finance.auth' => \App\Http\Middleware\FinanceSecurityMiddleware::class,
+            'campaign.worker.auth' => \App\Http\Middleware\CampaignWorkerAuthMiddleware::class,
         ]);
 
         $middleware->appendToGroup('api', [

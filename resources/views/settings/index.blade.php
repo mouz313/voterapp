@@ -267,7 +267,7 @@
             @endif
 
             <!-- Test Notification Form -->
-            <form method="POST" action="{{ route('settings.notification.test') }}" id="testNotificationForm" onsubmit="return confirm('Send test push notification now?');">
+            <form method="POST" action="{{ route('settings.notification.test') }}" id="testNotificationForm">
                 @csrf
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
@@ -338,7 +338,7 @@
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2 mt-3">
-                        <button type="submit" class="btn btn-warning px-4 py-2 fw-semibold text-dark shadow-sm">
+                        <button type="button" class="btn btn-warning px-4 py-2 fw-semibold text-dark shadow-sm" onclick="openConfirmNotificationModal()">
                             <i class="bi bi-send-fill me-1"></i> Send Test Notification
                         </button>
                     </div>
@@ -465,6 +465,66 @@
         </div>
     </div>
 
+    <!-- Confirm Test Push Notification Modal (UI-matched) -->
+    <div class="modal fade" id="confirmTestNotificationModal" tabindex="-1" aria-labelledby="confirmTestNotificationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-warning-subtle py-3 border-bottom border-warning-subtle">
+                    <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="confirmTestNotificationModalLabel">
+                        <span class="rounded-circle bg-warning text-dark d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.95rem;">
+                            <i class="bi bi-bell-fill"></i>
+                        </span>
+                        Confirm Push Notification Dispatch
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-3">
+                        <div class="rounded-circle bg-warning-subtle text-warning mx-auto d-flex align-items-center justify-content-center mb-2" style="width: 58px; height: 58px; font-size: 1.75rem;">
+                            <i class="bi bi-broadcast text-dark"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">Send Test Push Notification Now?</h6>
+                        <p class="text-muted small mb-0">Yeh test alert Firebase ke zariye targeted devices par instant dispatch hoga.</p>
+                    </div>
+
+                    <div class="card bg-light border p-3 rounded-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span class="text-muted small fw-semibold">Target Recipient:</span>
+                            <span class="badge bg-primary-subtle text-primary fw-bold text-wrap text-end" id="modalPreviewTarget" style="max-width: 260px;">Broadcast</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span class="text-muted small fw-semibold">Priority:</span>
+                            <span class="badge bg-secondary-subtle text-secondary" id="modalPreviewPriority">High Priority</span>
+                        </div>
+                        <div class="py-1 border-bottom">
+                            <span class="text-muted small fw-semibold d-block">Title:</span>
+                            <strong class="text-dark small" id="modalPreviewTitle">Notification Title</strong>
+                        </div>
+                        <div class="pt-1">
+                            <span class="text-muted small fw-semibold d-block">Message Body:</span>
+                            <p class="text-secondary small mb-0 fst-italic" id="modalPreviewBody">Message content preview...</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2 mb-0">
+                        <i class="bi bi-info-circle-fill text-dark fs-5 flex-shrink-0"></i>
+                        <div>
+                            Connected mobile devices par real-time notification show hogi.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-light border px-3 fw-semibold text-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x me-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning text-dark fw-bold px-4 shadow-sm" id="btnConfirmSendNotification">
+                        <i class="bi bi-send-fill me-1"></i> Send Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Backup Loader & Test Notification Scripts -->
     <script>
         function triggerBackupLoader() {
@@ -488,6 +548,70 @@
             if (workerGroup) workerGroup.classList.toggle('d-none', targetType !== 'worker');
             if (tokenGroup) tokenGroup.classList.toggle('d-none', targetType !== 'custom_token');
         }
+
+        function openConfirmNotificationModal() {
+            const form = document.getElementById('testNotificationForm');
+            if (!form) return;
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const targetSelect = document.getElementById('targetTypeSelect');
+            const targetType = targetSelect ? targetSelect.value : '';
+            let targetText = targetSelect ? targetSelect.options[targetSelect.selectedIndex].text : 'Broadcast';
+
+            if (targetType === 'candidate') {
+                const candSelect = form.querySelector('select[name="candidate_id"]');
+                if (candSelect && candSelect.value) {
+                    targetText = candSelect.options[candSelect.selectedIndex].text;
+                } else {
+                    if (candSelect) candSelect.reportValidity();
+                    else form.reportValidity();
+                    return;
+                }
+            } else if (targetType === 'worker') {
+                const workerSelect = form.querySelector('select[name="worker_id"]');
+                if (workerSelect && workerSelect.value) {
+                    targetText = workerSelect.options[workerSelect.selectedIndex].text;
+                } else {
+                    if (workerSelect) workerSelect.reportValidity();
+                    else form.reportValidity();
+                    return;
+                }
+            } else if (targetType === 'custom_token') {
+                const tokenInput = form.querySelector('input[name="fcm_token"]');
+                if (tokenInput && tokenInput.value.trim()) {
+                    targetText = 'Custom Token: ' + tokenInput.value.trim().substring(0, 16) + '...';
+                } else {
+                    if (tokenInput) tokenInput.reportValidity();
+                    else form.reportValidity();
+                    return;
+                }
+            }
+
+            const titleInput = form.querySelector('input[name="title"]');
+            const bodyInput = form.querySelector('input[name="body"]');
+            const prioritySelect = form.querySelector('select[name="priority"]');
+
+            document.getElementById('modalPreviewTarget').textContent = targetText;
+            document.getElementById('modalPreviewPriority').textContent = prioritySelect?.options[prioritySelect.selectedIndex]?.text || 'High Priority';
+            document.getElementById('modalPreviewTitle').textContent = titleInput?.value || '(Empty Title)';
+            document.getElementById('modalPreviewBody').textContent = bodyInput?.value || '(Empty Body)';
+
+            const modalEl = document.getElementById('confirmTestNotificationModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        }
+
+        document.getElementById('btnConfirmSendNotification')?.addEventListener('click', function () {
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...';
+            document.getElementById('testNotificationForm')?.submit();
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
             toggleTargetFields();
