@@ -142,4 +142,14 @@ class User extends Authenticatable
     {
         return $this->role === 'candidate';
     }
+
+    public function isDataEntry(): bool
+    {
+        return $this->role === 'data_entry';
+    }
+
+    public function canDelete(): bool
+    {
+        return $this->role === 'admin';
+    }
 }

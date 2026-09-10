@@ -443,6 +443,17 @@ class CampaignController extends Controller
             if ($sentiment === 'neutral') $sentiment = 'unassigned';
             $s['sentiment'] = $sentiment;
             $s['gharana_no'] = (int) ($s['gharana_no'] ?? 0);
+
+            // Flexible VIP / Special Request detection
+            $vipRaw = $s['is_vip_visit_requested'] 
+                ?? $s['vip_visit_requested'] 
+                ?? $s['special_request'] 
+                ?? $s['is_special_request'] 
+                ?? $s['vip_request'] 
+                ?? $s['is_vip'] 
+                ?? false;
+
+            $s['is_vip_visit_requested'] = filter_var($vipRaw, FILTER_VALIDATE_BOOLEAN) || $vipRaw === 1 || $vipRaw === '1';
             $normalized[] = $s;
         }
 
@@ -507,24 +518,31 @@ class CampaignController extends Controller
                 ]
             );
 
-            // Auto-trigger FCM push alert to Candidate if VIP visit is requested
+            // Auto-trigger FCM push alert to Candidate if VIP / Special Request is requested
             if ($isVipRequested) {
                 try {
                     $influencer = !empty($item['influencer_name']) ? $item['influencer_name'] : 'Family Head';
                     $phone = !empty($item['influencer_phone']) ? $item['influencer_phone'] : 'N/A';
-                    app(FirebaseNotificationService::class)->sendToCandidate(
+                    $notes = !empty($item['notes']) ? $item['notes'] : '';
+
+                    \Illuminate\Support\Facades\Log::info("[VIP ALERT DISPATCHING] Candidate: {$candidateId}, Block: {$itemBlockCode}, Gharana: {$gharanaNo}, Influencer: {$influencer}");
+
+                    $sentCount = app(FirebaseNotificationService::class)->sendToCandidate(
                         $candidateId,
-                        "🚨 VIP Daurah Darkhwast — Gharana #{$gharanaNo}",
-                        "Worker {$worker->name} ne Block {$itemBlockCode} ke Gharana #{$gharanaNo} ({$influencer}) ke liye candidate visit ki request ki hai.",
+                        "🚨 Special Request / VIP Daurah — Gharana #{$gharanaNo}",
+                        "Worker {$worker->name} ne Block {$itemBlockCode} (Gharana #{$gharanaNo} - {$influencer}) se candidate daurah ki special request bheji hai.",
                         [
                             'type' => 'vip_visit_request',
                             'block_code' => (string) $itemBlockCode,
                             'gharana_no' => (string) $gharanaNo,
                             'influencer_name' => (string) $influencer,
                             'influencer_phone' => (string) $phone,
-                            'notes' => (string) ($item['notes'] ?? ''),
+                            'notes' => (string) $notes,
+                            'worker_name' => (string) $worker->name,
                         ]
                     );
+
+                    \Illuminate\Support\Facades\Log::info("[VIP ALERT DISPATCHED] Candidate: {$candidateId}, Sent to {$sentCount} devices/topics.");
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning("[FCM VIP ALERT TRIGGER ERROR] " . $e->getMessage());
                 }

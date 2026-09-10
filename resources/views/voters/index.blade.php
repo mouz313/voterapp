@@ -78,10 +78,12 @@
                             <td class="text-end actions-col">
                                 <a href="{{ route('voters.show', $voter) }}" class="btn btn-sm btn-outline-info btn-action" title="View"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('voters.edit', $voter) }}" class="btn btn-sm btn-outline-secondary btn-action" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @if(auth()->user()->canDelete())
                                 <form method="POST" action="{{ route('voters.destroy', $voter) }}" class="d-inline" onsubmit="return confirm('Delete this voter?');">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger btn-action" title="Delete"><i class="bi bi-trash"></i></button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

@@ -31,11 +31,17 @@
             </a>
 
             <div class="ms-auto d-flex align-items-center gap-2 gap-sm-3">
-                <!-- Device Telemetry Indicator -->
-                <a href="{{ route('candidates.index') }}" class="badge bg-success-subtle text-success border border-success-subtle d-none d-md-inline-flex align-items-center gap-1 text-decoration-none py-2 px-2.5">
-                    <span class="spinner-grow spinner-grow-sm text-success" style="width: 8px; height: 8px;" role="status"></span>
-                    <span>{{ \App\Models\CandidateDevice::where('is_revoked', false)->count() }} Active Devices</span>
-                </a>
+                @if(Auth::check() && Auth::user()->isDataEntry())
+                    <span class="badge bg-info-subtle text-info border border-info-subtle d-inline-flex align-items-center gap-1 py-1.5 px-2.5">
+                        <i class="bi bi-person-workspace"></i> Data Entry Operator
+                    </span>
+                @elseif(Auth::check() && Auth::user()->isAdmin())
+                    <!-- Device Telemetry Indicator -->
+                    <a href="{{ route('candidates.index') }}" class="badge bg-success-subtle text-success border border-success-subtle d-none d-md-inline-flex align-items-center gap-1 text-decoration-none py-2 px-2.5">
+                        <span class="spinner-grow spinner-grow-sm text-success" style="width: 8px; height: 8px;" role="status"></span>
+                        <span>{{ \App\Models\CandidateDevice::where('is_revoked', false)->count() }} Active Devices</span>
+                    </a>
+                @endif
 
                 <div class="dropdown">
                     <a class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" href="#" role="button"
@@ -45,8 +51,10 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                         <li><a class="dropdown-item py-2 small" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2 text-success"></i>Dashboard Matrix</a></li>
-                        <li><a class="dropdown-item py-2 small" href="{{ route('finance.index') }}"><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Finance &amp; Sales Vault</a></li>
-                        <li><a class="dropdown-item py-2 small" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2 text-secondary"></i>System Settings</a></li>
+                        @if(Auth::check() && Auth::user()->isAdmin())
+                            <li><a class="dropdown-item py-2 small" href="{{ route('finance.index') }}"><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Finance &amp; Sales Vault</a></li>
+                            <li><a class="dropdown-item py-2 small" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2 text-secondary"></i>System Settings</a></li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
@@ -71,9 +79,43 @@
                 <span>VoterApp<small>Offline Voter Verification</small></span>
             </div>
             <nav class="sidebar-nav">
+            @if(Auth::check() && Auth::user()->isDataEntry())
+                <p class="sidebar-heading">Data Entry Command</p>
+                <a href="{{ route('dashboard') }}" class="sidebar-link {{ Request::is('dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-speedometer2"></i> <span>Dashboard Matrix</span>
+                </a>
+                <a href="{{ route('voters.index') }}" class="sidebar-link {{ (Request::is('voters*') && !Request::is('voters/import*')) ? 'active' : '' }}">
+                    <i class="bi bi-people"></i> <span>Voters Directory</span>
+                </a>
+                <a href="{{ route('search.index') }}" class="sidebar-link {{ Request::is('search*') ? 'active' : '' }}">
+                    <i class="bi bi-search"></i> <span>Voter Search</span>
+                </a>
+
+                <p class="sidebar-heading">Data Entry Modules</p>
+                <a href="{{ route('block-codes.index') }}" class="sidebar-link {{ (Request::is('block-codes*') && !Request::is('block-codes/import*')) ? 'active' : '' }}">
+                    <i class="bi bi-collection"></i> <span>Census Block Codes</span>
+                </a>
+                <a href="{{ route('polling-stations.index') }}" class="sidebar-link {{ (Request::is('polling-stations') || (Request::is('polling-stations/*') && !Request::is('polling-stations/mapping*') && !Request::is('polling-stations/import*'))) ? 'active' : '' }}">
+                    <i class="bi bi-house-door"></i> <span>Polling Stations</span>
+                </a>
+
+                <p class="sidebar-heading">Bulk Imports</p>
+                <a href="{{ route('voters.import.form') }}" class="sidebar-link {{ Request::is('voters/import') ? 'active' : '' }}">
+                    <i class="bi bi-filetype-csv"></i> <span>Import Voters List</span>
+                </a>
+                <a href="{{ route('block-codes.import.form') }}" class="sidebar-link {{ Request::is('block-codes/import*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> <span>Import ECP Delimitation</span>
+                </a>
+                <a href="{{ route('polling-stations.import.form') }}" class="sidebar-link {{ Request::is('polling-stations/import*') ? 'active' : '' }}">
+                    <i class="bi bi-upload"></i> <span>Import Stations</span>
+                </a>
+            @else
                 <p class="sidebar-heading">Main Command</p>
                 <a href="{{ route('dashboard') }}" class="sidebar-link {{ Request::is('dashboard') ? 'active' : '' }}">
                     <i class="bi bi-speedometer2"></i> <span>Operations Matrix</span>
+                </a>
+                <a href="{{ route('voters.index') }}" class="sidebar-link {{ (Request::is('voters*') && !Request::is('voters/import*')) ? 'active' : '' }}">
+                    <i class="bi bi-people"></i> <span>Voters Directory</span>
                 </a>
                 <a href="{{ route('search.index') }}" class="sidebar-link {{ Request::is('search*') ? 'active' : '' }}">
                     <i class="bi bi-search"></i> <span>Voter Search</span>
@@ -111,6 +153,9 @@
                 <a href="{{ route('candidates.index') }}" class="sidebar-link {{ Request::is('candidates*') ? 'active' : '' }}">
                     <i class="bi bi-person-badge"></i> <span>Candidates &amp; Devices</span>
                 </a>
+                <a href="{{ route('operators.index') }}" class="sidebar-link {{ Request::is('operators*') ? 'active' : '' }}">
+                    <i class="bi bi-person-workspace"></i> <span>Data Entry Staff</span>
+                </a>
                 <a href="{{ route('finance.index') }}" class="sidebar-link {{ Request::is('finance*') ? 'active' : '' }}">
                     <i class="bi bi-shield-lock-fill text-warning"></i> <span>Finance &amp; Sales Vault</span>
                 </a>
@@ -135,6 +180,7 @@
                 <a href="{{ route('settings.index') }}" class="sidebar-link {{ Request::is('settings*') ? 'active' : '' }}">
                     <i class="bi bi-gear"></i> <span>Settings & Purge</span>
                 </a>
+            @endif
             </nav>
         </aside>
 

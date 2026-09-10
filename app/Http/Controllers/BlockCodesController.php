@@ -71,7 +71,7 @@ class BlockCodesController extends Controller
     {
         $validated = $request->validate([
             'uc_id' => 'required|exists:ucs,id',
-            'code' => 'required|string|max:50',
+            'code' => 'required|string|max:50|unique:block_codes,code',
             'area_name' => 'nullable|string',
             'area_name_ur' => 'nullable|string',
             'population' => 'nullable|integer|min:0',
@@ -103,7 +103,7 @@ class BlockCodesController extends Controller
     {
         $validated = $request->validate([
             'uc_id' => 'required|exists:ucs,id',
-            'code' => 'required|string|max:50',
+            'code' => 'required|string|max:50|unique:block_codes,code,' . $blockCode->id,
             'area_name' => 'nullable|string',
             'area_name_ur' => 'nullable|string',
             'population' => 'nullable|integer|min:0',
@@ -168,6 +168,8 @@ class BlockCodesController extends Controller
         }
 
         $imported = 0;
+        $skippedDuplicates = 0;
+        $seenCodes = [];
         $currentUcNo = null;
         $currentUcId = null;
         $defaultTehsilId = $request->tehsil_id;
@@ -203,18 +205,30 @@ class BlockCodesController extends Controller
             $population = is_numeric($col3) ? (int) $col3 : null;
 
             if (!empty($blockCodeStr) && $currentUcId) {
-                BlockCode::updateOrCreate(
-                    ['uc_id' => $currentUcId, 'code' => $blockCodeStr],
-                    [
-                        'area_name' => $areaName,
-                        'population' => $population,
-                    ]
-                );
+                // Deduplication: If block code already exists in DB or in current import batch, skip row
+                if (isset($seenCodes[$blockCodeStr]) || BlockCode::where('code', $blockCodeStr)->exists()) {
+                    $skippedDuplicates++;
+                    continue;
+                }
+
+                $seenCodes[$blockCodeStr] = true;
+
+                BlockCode::create([
+                    'uc_id' => $currentUcId,
+                    'code' => $blockCodeStr,
+                    'area_name' => $areaName,
+                    'population' => $population,
+                ]);
                 $imported++;
             }
         }
 
+        $msg = "Successfully imported {$imported} Census Block Codes.";
+        if ($skippedDuplicates > 0) {
+            $msg .= " Skipped {$skippedDuplicates} duplicate block code rows.";
+        }
+
         return redirect()->route('block-codes.index')
-            ->with('toast', ['type' => 'success', 'message' => "Successfully imported {$imported} Census Block Codes & Areas."]);
+            ->with('toast', ['type' => 'success', 'message' => $msg]);
     }
 }

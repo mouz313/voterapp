@@ -57,12 +57,16 @@ class VotersController extends Controller
             'father_name' => 'required|string|max:255',
             'age' => 'nullable|integer|min:1|max:120',
             'cnic' => 'required|string|max:15|unique:voters,cnic',
+            'phone' => 'nullable|string|max:30|unique:voters,phone',
             'silsala_no' => 'nullable|string|max:50',
             'gharana_no' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
         ]);
 
         $validated['cnic'] = Voter::normalizeCnic($validated['cnic']);
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = preg_replace('/[^\d+]/', '', trim($validated['phone']));
+        }
 
         Voter::create($validated);
 
@@ -89,12 +93,16 @@ class VotersController extends Controller
             'father_name' => 'required|string|max:255',
             'age' => 'nullable|integer|min:1|max:120',
             'cnic' => 'required|string|max:15|unique:voters,cnic,'.$voter->id,
+            'phone' => 'nullable|string|max:30|unique:voters,phone,'.$voter->id,
             'silsala_no' => 'nullable|string|max:50',
             'gharana_no' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
         ]);
 
         $validated['cnic'] = Voter::normalizeCnic($validated['cnic']);
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = preg_replace('/[^\d+]/', '', trim($validated['phone']));
+        }
 
         $voter->update($validated);
 
@@ -186,6 +194,7 @@ class VotersController extends Controller
 
         $fieldOptions = [
             'cnic' => 'CNIC',
+            'phone' => 'Phone / Mobile',
             'name' => 'Name',
             'father_name' => 'Father Name',
             'age' => 'Age',
@@ -246,6 +255,8 @@ class VotersController extends Controller
         $imported = 0;
         $noVote = 0;
         $skippedRows = [];
+        $seenCnics = [];
+        $seenPhones = [];
 
         DB::beginTransaction();
         try {
@@ -299,11 +310,26 @@ class VotersController extends Controller
                     continue;
                 }
 
-                // Real voter: duplicate CNICs are still skipped.
-                if (Voter::where('cnic', $cnic)->exists()) {
+                // Deduplication on CNIC: Skip if exists in DB or repeated in file
+                if (isset($seenCnics[$cnic]) || Voter::where('cnic', $cnic)->exists()) {
                     $skippedRows[] = ['row' => $lineNo, 'reason' => 'Duplicate CNIC: '.Voter::formatCnic($cnic)];
 
                     continue;
+                }
+
+                // Deduplication on Phone: Skip if exists in DB or repeated in file
+                $phone = !empty($data['phone']) ? preg_replace('/[^\d+]/', '', trim((string) $data['phone'])) : null;
+                if (!empty($phone)) {
+                    if (isset($seenPhones[$phone]) || Voter::where('phone', $phone)->exists()) {
+                        $skippedRows[] = ['row' => $lineNo, 'reason' => 'Duplicate Phone: '.$phone];
+
+                        continue;
+                    }
+                }
+
+                $seenCnics[$cnic] = true;
+                if (!empty($phone)) {
+                    $seenPhones[$phone] = true;
                 }
 
                 // Block: use the pre-selected block, else require a valid 9-digit block column.
@@ -343,6 +369,7 @@ class VotersController extends Controller
                     'father_name' => $data['father_name'] ?? 'Unknown',
                     'age' => isset($age) && $age !== '' && $age !== null ? (int) preg_replace('/\D/', '', (string) $age) : null,
                     'cnic' => $cnic,
+                    'phone' => $phone,
                     'silsala_no' => $data['silsala_no'] ?? null,
                     'gharana_no' => $data['gharana_no'] ?? null,
                     'address' => $address ?? null,
@@ -369,9 +396,10 @@ class VotersController extends Controller
     private function mapHeaders(array $header): array
     {
         $normalized = array_map(fn ($h) => strtolower(trim($h)), $header);
-        $fields = ['cnic', 'name', 'father_name', 'age', 'address', 'age_address', 'silsala_no', 'gharana_no', 'block_code', 'polling_station'];
+        $fields = ['cnic', 'phone', 'name', 'father_name', 'age', 'address', 'age_address', 'silsala_no', 'gharana_no', 'block_code', 'polling_station'];
         $aliases = [
             'cnic' => ['cnic', 'national_id', 'قومی شناختی کارڈ نمبر', 'قومی'],
+            'phone' => ['phone', 'mobile', 'cell', 'contact', 'فون', 'موبائل', 'رابطہ', 'فون نمبر', 'موبائل نمبر'],
             'name' => ['name', 'voter_name', 'نام'],
             'father_name' => ['father_name', 'father', 'والد / پتی کا نام', 'والد'],
             'age' => ['age', 'عمر'],

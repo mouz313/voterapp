@@ -19,6 +19,7 @@ class Voter extends Model
         'father_name',
         'age',
         'cnic',
+        'phone',
         'silsala_no',
         'gharana_no',
         'address',

@@ -149,6 +149,9 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     Route::post('/candidates/devices/{device}/toggle', [CandidatesController::class, 'toggleDeviceRevoke'])->name('candidates.devices.toggle');
     Route::delete('/candidates/devices/{device}', [CandidatesController::class, 'destroyDevice'])->name('candidates.devices.destroy');
 
+    // Data Entry Operators Management (Admin Only)
+    Route::resource('operators', \App\Http\Controllers\DataEntryOperatorsController::class)->except(['show']);
+
     // Finance & Sales Vault Security Unlock
     Route::get('/finance/unlock', [FinanceController::class, 'showUnlockForm'])->name('finance.unlock');
     Route::post('/finance/unlock', [FinanceController::class, 'unlock'])->name('finance.unlock.post');

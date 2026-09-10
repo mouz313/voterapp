@@ -16,14 +16,16 @@
             <a href="{{ route('voters.edit', $voter) }}" class="btn btn-outline-secondary">
                 <i class="bi bi-pencil me-1"></i> Edit
             </a>
+            @if(auth()->user()->canDelete())
             <form method="POST" action="{{ route('voters.destroy', $voter) }}" class="d-inline" onsubmit="return confirm('Delete this voter?');">
                 @csrf @method('DELETE')
                 <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i> Delete</button>
             </form>
+            @endif
         </div>
     </div>
 
-    <!-- On-screen: full data in a 6x2 grid -->
+    <!-- On-screen: full data in a grid -->
     <div class="card shadow-sm border-0 no-print">
         <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap gap-2">
             <span class="fw-semibold">Voter Information</span>
@@ -37,6 +39,7 @@
                 <div class="vg-cell"><div class="vg-label">Father / Husband</div><div class="vg-value">{{ $voter->father_name }}</div></div>
                 <div class="vg-cell"><div class="vg-label">Age</div><div class="vg-value">{{ $voter->age ?? '-' }}</div></div>
                 <div class="vg-cell"><div class="vg-label">CNIC</div><div class="vg-value cnic-cell">{{ $voter->formatted_cnic }}</div></div>
+                <div class="vg-cell"><div class="vg-label">Phone / Mobile</div><div class="vg-value">{{ $voter->phone ?? '-' }}</div></div>
                 <div class="vg-cell"><div class="vg-label">Block Code</div><div class="vg-value">{{ $voter->blockCode->code ?? '-' }}</div></div>
                 <div class="vg-cell"><div class="vg-label">Polling Station</div><div class="vg-value">{{ $voter->pollingStation->name ?? '-' }}</div></div>
 

@@ -195,12 +195,14 @@
                                 <a href="{{ route('polling-stations.edit', $ps) }}" class="btn btn-sm btn-outline-secondary" title="Edit Polling Station">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                @if(auth()->user()->canDelete())
                                 <form method="POST" action="{{ route('polling-stations.destroy', $ps) }}" class="d-inline" onsubmit="return confirm('WARNING: Are you sure you want to delete this polling station?');">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Delete Station">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

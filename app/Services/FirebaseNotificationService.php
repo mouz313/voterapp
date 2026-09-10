@@ -170,6 +170,24 @@ class FirebaseNotificationService
                             'title' => $title,
                             'body' => $body,
                         ],
+                        'android' => [
+                            'priority' => 'HIGH',
+                            'notification' => [
+                                'channel_id' => 'default',
+                                'sound' => 'default',
+                                'default_sound' => true,
+                                'default_vibrate_timings' => true,
+                                'notification_priority' => 'PRIORITY_HIGH',
+                            ],
+                        ],
+                        'apns' => [
+                            'payload' => [
+                                'aps' => [
+                                    'sound' => 'default',
+                                    'badge' => 1,
+                                ],
+                            ],
+                        ],
                         'data' => array_map('strval', array_merge($data, [
                             'title' => $title,
                             'body' => $body,
@@ -262,6 +280,13 @@ class FirebaseNotificationService
                     $sentCount++;
                 }
             }
+        }
+
+        // Also broadcast to Candidate Topic for instant delivery across all app background states
+        try {
+            $this->sendToTopic("candidate_{$candidateId}", $title, $body, $data);
+        } catch (\Throwable $e) {
+            Log::info("[FCM Topic Delivery Fallback] " . $e->getMessage());
         }
 
         return $sentCount;

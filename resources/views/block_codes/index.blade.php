@@ -141,10 +141,12 @@
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('block-codes.edit', $bc) }}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @if(auth()->user()->canDelete())
                                 <form method="POST" action="{{ route('block-codes.destroy', $bc) }}" class="d-inline" onsubmit="return confirm('Delete this block code?');">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

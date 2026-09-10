@@ -76,6 +76,11 @@
                         @error('gharana_no') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label">Phone / Mobile (optional)</label>
+                        <input type="text" name="phone" value="{{ old('phone') }}" class="form-control @error('phone') is-invalid @enderror" placeholder="03001234567">
+                        @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">Address (optional)</label>
                         <input type="text" name="address" value="{{ old('address') }}" class="form-control @error('address') is-invalid @enderror">
                         @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
