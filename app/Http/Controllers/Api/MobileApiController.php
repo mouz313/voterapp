@@ -509,19 +509,41 @@ class MobileApiController extends Controller
             ], 403);
         }
 
-        $query = trim((string) $request->input('q', ''));
+        $query = trim((string) (
+            $request->input('q') 
+            ?? $request->input('query') 
+            ?? $request->input('search') 
+            ?? $request->input('keyword') 
+            ?? $request->input('cnic') 
+            ?? $request->input('name') 
+            ?? ''
+        ));
         $by = $request->input('by', 'all');
 
         if ($query === '') {
             return response()->json([
-                'status' => false,
+                'status' => true,
+                'success' => true,
+                'count' => 0,
                 'message' => 'Search query is required.',
                 'results' => [],
-            ], 422);
+                'voters' => [],
+                'data' => [],
+            ]);
         }
 
         $voterQuery = Voter::with(['uc.tehsil.district', 'blockCode', 'pollingStation'])
             ->where('uc_id', $assignedUcId);
+
+        // Optional block_code filtering (default searches all UC blocks)
+        $requestedBlock = $request->input('block_code') ?? $request->input('block');
+        if (!empty($requestedBlock) && strtoupper(trim($requestedBlock)) !== 'ALL') {
+            $cleanBCode = trim($requestedBlock);
+            $block = BlockCode::where('code', $cleanBCode)->where('uc_id', $assignedUcId)->first();
+            if ($block) {
+                $voterQuery->where('block_code_id', $block->id);
+            }
+        }
 
         if ($by === 'cnic' || (preg_match('/^\d{5}/', $query) && strlen(preg_replace('/\D/', '', $query)) >= 5)) {
             $cleanCnic = Voter::normalizeCnic($query);

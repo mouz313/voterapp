@@ -7,6 +7,8 @@ use App\Models\BlockCode;
 use App\Models\CampaignWorker;
 use App\Models\CandidateDevice;
 use App\Models\GharanaSurvey;
+use App\Models\PollingStation;
+use App\Models\UC;
 use App\Models\User;
 use App\Models\Voter;
 use App\Services\FirebaseNotificationService;
@@ -121,11 +123,24 @@ class CampaignController extends Controller
             ], 401);
         }
 
-        if (!empty($validated['device_uid'])) {
-            $worker->update(['device_uid' => $validated['device_uid']]);
-        }
-
         $token = $worker->generateApiToken();
+
+        $updateData = ['last_sync_at' => now()];
+        if (!empty($validated['device_uid'])) {
+            $updateData['device_uid'] = $validated['device_uid'];
+        }
+        $worker->update($updateData);
+
+        $uc = $candidate->uc ?? UC::find($candidate->uc_id);
+        $availableBlocks = BlockCode::where('uc_id', $candidate->uc_id)
+            ->orderBy('code')
+            ->get(['id', 'code', 'area_name', 'area_name_ur'])
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'code' => $b->code,
+                'area_name' => $b->area_name,
+                'area_name_ur' => $b->area_name_ur,
+            ]);
 
         return response()->json([
             'success' => true,
@@ -145,7 +160,16 @@ class CampaignController extends Controller
                 'candidate_code' => $candidate->candidate_code,
                 'party_name' => $candidate->party_name,
                 'uc_id' => $candidate->uc_id,
+                'uc_name' => $uc?->name ?? 'Assigned UC',
+                'uc_no' => $uc?->uc_no,
             ],
+            'uc' => [
+                'id' => $uc?->id,
+                'name' => $uc?->name,
+                'uc_no' => $uc?->uc_no,
+            ],
+            'available_blocks' => $availableBlocks,
+            'block_codes' => $availableBlocks,
         ]);
     }
 
@@ -215,29 +239,50 @@ class CampaignController extends Controller
         }
 
         // Determine target block codes:
-        // 1. From query parameter if worker / mobile app requests a specific block (?block_code=... or ?block_codes=...)
-        // 2. From worker's assigned_block_code (which could be single or comma-separated)
         $requestedCodes = $request->query('block_codes') ?? $request->query('block_code');
         $rawCodes = $requestedCodes ?: $worker->assigned_block_code;
 
-        $blockCodes = array_values(array_filter(array_map('trim', explode(',', (string) $rawCodes))));
+        $candidate = $worker->candidate ?? User::find($worker->candidate_id);
 
-        if (empty($blockCodes)) {
+        if (empty($rawCodes) || strtoupper(trim((string) $rawCodes)) === 'ALL') {
+            $blockModels = BlockCode::where('uc_id', $candidate->uc_id)->orderBy('code')->get();
+            $blockCodes = $blockModels->pluck('code')->toArray();
+        } else {
+            $blockCodes = array_values(array_filter(array_map('trim', explode(',', (string) $rawCodes))));
+            $blockModels = BlockCode::whereIn('code', $blockCodes)->orderBy('code')->get();
+            if ($blockModels->isEmpty() && $candidate && $candidate->uc_id) {
+                $blockModels = BlockCode::where('uc_id', $candidate->uc_id)->orderBy('code')->get();
+                $blockCodes = $blockModels->pluck('code')->toArray();
+            }
+        }
+
+        if (empty($blockCodes) || $blockModels->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'status' => false,
-                'message' => 'No block codes assigned to this staff member.',
+                'message' => 'No valid block codes found for this staff member.',
             ], 404);
         }
 
-        // Find BlockCode models
-        $blockModels = BlockCode::whereIn('code', $blockCodes)->get();
         $blockCodeIds = $blockModels->pluck('id')->toArray();
         $blockIdToCodeMap = $blockModels->pluck('code', 'id')->toArray();
+        $blockIdToAreaMap = $blockModels->pluck('area_name', 'id')->toArray();
+        $blockIdToAreaUrMap = $blockModels->pluck('area_name_ur', 'id')->toArray();
+
+        // Fetch Polling Stations strictly for these block codes / candidate UC
+        $pollingStations = PollingStation::where('uc_id', $candidate->uc_id)
+            ->where(function ($q) use ($blockCodeIds) {
+                $q->whereIn('block_code_id', $blockCodeIds)
+                  ->orWhereNull('block_code_id');
+            })
+            ->orderByRaw('CAST(station_no AS UNSIGNED) ASC')
+            ->get();
+
+        $psMap = $pollingStations->keyBy('id');
 
         // Fetch voters across these block codes
         $voters = Voter::whereIn('block_code_id', $blockCodeIds)
-            ->select('id', 'block_code_id', 'name', 'father_name', 'cnic', 'gharana_no', 'silsala_no', 'age', 'address')
+            ->with(['blockCode:id,code,area_name,area_name_ur', 'pollingStation:id,station_no,name,gender,address'])
             ->orderBy('block_code_id')
             ->orderBy('gharana_no')
             ->orderBy('silsala_no')
@@ -257,8 +302,10 @@ class CampaignController extends Controller
 
         foreach ($blockModels as $bModel) {
             $blocksSummary[$bModel->code] = [
+                'id' => $bModel->id,
                 'code' => $bModel->code,
                 'area_name' => $bModel->area_name,
+                'area_name_ur' => $bModel->area_name_ur,
                 'total_voters' => 0,
                 'total_gharanas' => 0,
             ];
@@ -286,6 +333,7 @@ class CampaignController extends Controller
                 'sentiment' => $existing ? $existing->sentiment : 'unassigned',
                 'notes' => $existing ? $existing->notes : null,
                 'influencer_name' => $existing ? $existing->influencer_name : null,
+                'influencer_phone' => $existing ? $existing->influencer_phone : null,
                 'is_vip_visit_requested' => $existing ? (bool) $existing->is_vip_visit_requested : false,
                 'is_visited' => $existing && $existing->visited_at !== null,
                 'visited_at' => $existing ? $existing->visited_at : null,
@@ -295,19 +343,81 @@ class CampaignController extends Controller
 
         $primaryBlockCode = $blockCodes[0] ?? $worker->assigned_block_code;
 
+        $votersPayload = $voters->map(fn ($v) => [
+            'id' => $v->id,
+            'silsala_no' => $v->silsala_no,
+            'gharana_no' => $v->gharana_no,
+            'name' => $v->name,
+            'father_name' => $v->father_name,
+            'cnic' => $v->cnic,
+            'formatted_cnic' => $v->formatted_cnic,
+            'age' => $v->age,
+            'gender' => $v->gender,
+            'gender_ur' => $v->gender_label_ur,
+            'address' => $v->address,
+            'block_code_id' => $v->block_code_id,
+            'block_code' => $v->blockCode?->code ?? ($blockIdToCodeMap[$v->block_code_id] ?? ''),
+            'area_name' => $v->blockCode?->area_name ?? ($blockIdToAreaMap[$v->block_code_id] ?? ''),
+            'area_name_ur' => $v->blockCode?->area_name_ur ?? ($blockIdToAreaUrMap[$v->block_code_id] ?? ''),
+            'polling_station_id' => $v->polling_station_id,
+            'polling_station_name' => $v->pollingStation?->name,
+            'polling_station_gender' => $v->pollingStation?->gender,
+            'polling_station_no' => $v->pollingStation?->station_no,
+        ]);
+
+        $blockCodesPayload = $blockModels->map(fn ($b) => [
+            'id' => $b->id,
+            'code' => $b->code,
+            'area_name' => $b->area_name,
+            'area_name_ur' => $b->area_name_ur,
+            'population' => $b->population,
+        ]);
+
+        $pollingStationsPayload = $pollingStations->map(fn ($ps) => [
+            'id' => $ps->id,
+            'station_no' => $ps->station_no,
+            'block_code_id' => $ps->block_code_id,
+            'name' => $ps->name,
+            'gender' => $ps->gender,
+            'address' => $ps->address,
+            'male_booths' => $ps->male_booths,
+            'female_booths' => $ps->female_booths,
+            'total_booths' => $ps->total_booths,
+        ]);
+
+        $targetUc = $candidate->uc ?? UC::find($candidate->uc_id);
+
         return response()->json([
             'success' => true,
             'status' => true,
             'is_multi_block' => count($blockCodes) > 1,
             'block_code' => $primaryBlockCode,
             'assigned_block_code' => $worker->assigned_block_code,
-            'block_codes' => $blockCodes,
+            'block_codes' => $blockCodesPayload,
+            'polling_stations' => $pollingStationsPayload,
+            'voters' => $votersPayload,
             'blocks_summary' => array_values($blocksSummary),
             'total_blocks' => count($blockCodes),
             'total_gharanas' => count($gharanaList),
             'total_voters' => $voters->count(),
             'gharanas' => $gharanaList,
             'data' => $gharanaList,
+            'uc' => $targetUc ? [
+                'id' => $targetUc->id,
+                'uc_no' => $targetUc->uc_no,
+                'name' => $targetUc->name,
+                'name_ur' => $targetUc->name_ur,
+                'tehsil' => $targetUc->tehsil?->name ?? '',
+                'district' => $targetUc->tehsil?->district?->name ?? '',
+            ] : null,
+            'branding' => [
+                'candidate_name' => $candidate->name,
+                'party_name' => $candidate->party_name,
+                'candidate_symbol' => $candidate->candidate_symbol,
+                'party_logo_url' => $candidate->party_logo_url,
+                'candidate_image_url' => $candidate->candidate_image_url,
+                'candidate_symbol_image_url' => $candidate->candidate_symbol_image_url,
+            ],
         ]);
     }
 
@@ -444,14 +554,29 @@ class CampaignController extends Controller
             return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthenticated candidate.'], 401);
         }
 
+        $availableBlocks = BlockCode::where('uc_id', $candidate->uc_id)
+            ->orderBy('code')
+            ->get(['id', 'code', 'area_name', 'area_name_ur'])
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'code' => $b->code,
+                'area_name' => $b->area_name,
+                'area_name_ur' => $b->area_name_ur,
+            ]);
+
         // Handle POST: Create new worker
         if ($request->isMethod('post')) {
             $validated = $request->validate([
                 'name' => 'required|string|max:150',
                 'phone' => 'nullable|string|max:50',
-                'assigned_block_code' => 'required|string|max:255',
+                'assigned_block_code' => 'nullable|string|max:255',
                 'pin' => 'nullable|string|min:4|max:10',
             ]);
+
+            // Default to 'ALL' if assigned_block_code is empty or missing
+            $assignedBlockCode = !empty($validated['assigned_block_code']) 
+                ? trim($validated['assigned_block_code']) 
+                : 'ALL';
 
             // Auto-generate 4-digit PIN if not specified
             $pin = !empty($validated['pin']) ? trim($validated['pin']) : (string) mt_rand(1000, 9999);
@@ -460,7 +585,7 @@ class CampaignController extends Controller
                 'candidate_id' => $candidate->id,
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
-                'assigned_block_code' => $validated['assigned_block_code'],
+                'assigned_block_code' => $assignedBlockCode,
                 'pin' => $pin,
                 'is_active' => true,
             ]);
@@ -487,6 +612,8 @@ class CampaignController extends Controller
                 'whatsapp_message' => $waMsg,
                 'whatsapp_share_url' => $waUrl,
                 'phone' => $worker->phone,
+                'available_block_codes' => $availableBlocks,
+                'all_blocks' => $availableBlocks,
             ], 201);
         }
 
@@ -526,11 +653,14 @@ class CampaignController extends Controller
             'status' => true,
             'workers' => $workers,
             'data' => $workers,
+            'available_block_codes' => $availableBlocks,
+            'all_blocks' => $availableBlocks,
             'candidate' => [
                 'id' => $candidate->id,
                 'name' => $candidate->name,
                 'candidate_code' => $candidate->candidate_code,
                 'party_name' => $candidate->party_name,
+                'uc_id' => $candidate->uc_id,
             ],
         ]);
     }
