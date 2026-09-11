@@ -22,7 +22,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PublicParchiController;
 use Illuminate\Support\Str;
+
+// Public Web Voter Parchi Portal (Open to all citizens, no login required)
+Route::get('/parchi', [PublicParchiController::class, 'index'])->name('public.parchi');
+Route::match(['get', 'post'], '/parchi/search', [PublicParchiController::class, 'search'])->name('public.parchi.search');
+Route::post('/parchi/queue-status', [PublicParchiController::class, 'queueStatus'])->name('public.parchi.queue.status');
+Route::get('/parchi/ticket/{ticketId}', [PublicParchiController::class, 'showTicketSlip'])->name('public.parchi.ticket.show');
+Route::get('/parchi/{voter}/print', [PublicParchiController::class, 'showPrint'])->name('public.parchi.print');
 
 Route::get('/', fn () => redirect('/login'));
 

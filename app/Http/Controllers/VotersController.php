@@ -26,6 +26,8 @@ class VotersController extends Controller
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('father_name', 'like', "%{$search}%")
                         ->orWhere('cnic', 'like', '%'.Voter::normalizeCnic($search).'%')
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('silsala_no', 'like', "%{$search}%")
                         ->orWhere('gharana_no', 'like', "%{$search}%");
                 });
             });
@@ -134,9 +136,24 @@ class VotersController extends Controller
 
         // Fetch candidate assigned to this UC for Voter Parchi branding
         $candidate = \App\Models\User::where('role', 'candidate')
+            ->where('status', 'active')
             ->where('uc_id', $voter->uc_id)
             ->latest()
             ->first();
+
+        if (!$candidate && $voter->uc && $voter->uc->tehsil_id) {
+            $tehsilUcIds = UC::where('tehsil_id', $voter->uc->tehsil_id)->pluck('id');
+            $candidate = \App\Models\User::where('role', 'candidate')
+                ->where('status', 'active')
+                ->whereIn('uc_id', $tehsilUcIds)
+                ->first();
+        }
+
+        if (!$candidate) {
+            $candidate = \App\Models\User::where('role', 'candidate')
+                ->where('status', 'active')
+                ->first();
+        }
 
         return view('voters.show', compact('voter', 'family', 'candidate'));
     }

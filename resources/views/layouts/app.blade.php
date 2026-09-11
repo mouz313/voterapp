@@ -43,6 +43,10 @@
                     </a>
                 @endif
 
+                <a href="{{ route('public.parchi') }}" target="_blank" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 rounded-pill px-2.5 shadow-xs" title="Open Public Voter Parchi Search">
+                    <i class="bi bi-box-arrow-up-right"></i> <span class="d-none d-md-inline">Public Slip Portal</span>
+                </a>
+
                 <div class="dropdown">
                     <a class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" href="#" role="button"
                        data-bs-toggle="dropdown" aria-expanded="false">
@@ -109,6 +113,11 @@
                 <a href="{{ route('polling-stations.import.form') }}" class="sidebar-link {{ Request::is('polling-stations/import*') ? 'active' : '' }}">
                     <i class="bi bi-upload"></i> <span>Import Stations</span>
                 </a>
+
+                <p class="sidebar-heading">Public Portals</p>
+                <a href="{{ route('public.parchi') }}" target="_blank" class="sidebar-link">
+                    <i class="bi bi-box-arrow-up-right text-success"></i> <span>Online Voter Slip (پرچی)</span>
+                </a>
             @else
                 <p class="sidebar-heading">Main Command</p>
                 <a href="{{ route('dashboard') }}" class="sidebar-link {{ Request::is('dashboard') ? 'active' : '' }}">
@@ -174,6 +183,11 @@
                 <p class="sidebar-heading">Developer & APIs</p>
                 <a href="{{ route('api.docs') }}" class="sidebar-link {{ Request::is('api-docs*') ? 'active' : '' }}">
                     <i class="bi bi-code-slash"></i> <span>Mobile APIs & Docs</span>
+                </a>
+
+                <p class="sidebar-heading">Public Portals</p>
+                <a href="{{ route('public.parchi') }}" target="_blank" class="sidebar-link">
+                    <i class="bi bi-box-arrow-up-right text-success"></i> <span>Online Voter Slip (پرچی)</span>
                 </a>
 
                 <p class="sidebar-heading">System</p>
