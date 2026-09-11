@@ -47,6 +47,11 @@ class GharanaSurvey extends Model
         return $this->belongsTo(CampaignWorker::class, 'visited_by_worker_id');
     }
 
+    public function blockCodeModel(): BelongsTo
+    {
+        return $this->belongsTo(BlockCode::class, 'block_code', 'code');
+    }
+
     public function scopePakka($query)
     {
         return $query->where('sentiment', 'pakka');

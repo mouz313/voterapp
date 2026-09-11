@@ -158,6 +158,17 @@
                     <i class="bi bi-diagram-3-fill"></i> <span>Polling Scheme Mapping</span>
                 </a>
 
+                <p class="sidebar-heading">Campaign Intelligence</p>
+                <a href="{{ route('surveys.index') }}" class="sidebar-link {{ (Request::is('surveys') && !Request::is('surveys/vip-radar*')) ? 'active' : '' }}">
+                    <i class="bi bi-pie-chart-fill text-success"></i> <span>Gharana Sentiment</span>
+                </a>
+                <a href="{{ route('surveys.vip-radar') }}" class="sidebar-link {{ Request::is('surveys/vip-radar*') ? 'active' : '' }}">
+                    <i class="bi bi-radar" style="color: #a855f7;"></i> <span>VIP Visit Radar</span>
+                </a>
+                <a href="{{ route('campaign-workers.index') }}" class="sidebar-link {{ Request::is('campaign-workers*') ? 'active' : '' }}">
+                    <i class="bi bi-person-badge-fill text-info"></i> <span>Field Workers</span>
+                </a>
+
                 <p class="sidebar-heading">App Distribution &amp; Sales</p>
                 <a href="{{ route('candidates.index') }}" class="sidebar-link {{ Request::is('candidates*') ? 'active' : '' }}">
                     <i class="bi bi-person-badge"></i> <span>Candidates &amp; Devices</span>

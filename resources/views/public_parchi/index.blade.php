@@ -101,8 +101,14 @@
                                    autocomplete="off"
                                    style="letter-spacing: 0.5px;">
                         </div>
-                        <div class="form-text text-muted font-urdu small mt-0.5" style="font-size: 0.68rem;">
-                            درست موبائل نمبر درج کریں تاکہ پرچی ریکارڈ میں محفوظ ہو سکے۔
+                        <div class="p-2 rounded bg-light border text-muted small mt-2" style="font-size: 0.72rem; line-height: 1.4;">
+                            <div class="d-flex align-items-start gap-1.5">
+                                <i class="bi bi-shield-lock-fill text-success mt-0.5" style="font-size: 0.8rem;"></i>
+                                <div>
+                                    <span class="font-urdu fw-medium text-dark d-block">آپ کا موبائل نمبر آپ کے ووٹر ریکارڈ کے ساتھ محفوظ کیا جائے گا۔</span>
+                                    <span class="text-secondary" style="font-size: 0.68rem;">Your mobile number will be saved with your voter record.</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

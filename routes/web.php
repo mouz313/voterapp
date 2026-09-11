@@ -27,7 +27,9 @@ use Illuminate\Support\Str;
 
 // Public Web Voter Parchi Portal (Open to all citizens, no login required)
 Route::get('/parchi', [PublicParchiController::class, 'index'])->name('public.parchi');
-Route::match(['get', 'post'], '/parchi/search', [PublicParchiController::class, 'search'])->name('public.parchi.search');
+Route::match(['get', 'post'], '/parchi/search', [PublicParchiController::class, 'search'])
+    ->name('public.parchi.search')
+    ->middleware('throttle:20,1');
 Route::post('/parchi/queue-status', [PublicParchiController::class, 'queueStatus'])->name('public.parchi.queue.status');
 Route::get('/parchi/ticket/{ticketId}', [PublicParchiController::class, 'showTicketSlip'])->name('public.parchi.ticket.show');
 Route::get('/parchi/{voter}/print', [PublicParchiController::class, 'showPrint'])->name('public.parchi.print');
@@ -194,6 +196,13 @@ Route::middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(
     Route::get('/voters/{voter}', [VotersController::class, 'show'])->name('voters.show');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+
+    // Campaign Intelligence & Door-to-Door Surveys
+    Route::get('/surveys', [\App\Http\Controllers\GharanaSurveyController::class, 'index'])->name('surveys.index');
+    Route::get('/surveys/vip-radar', [\App\Http\Controllers\GharanaSurveyController::class, 'vipRadar'])->name('surveys.vip-radar');
+    Route::post('/surveys/{survey}/toggle-vip', [\App\Http\Controllers\GharanaSurveyController::class, 'toggleVipStatus'])->name('surveys.toggle-vip');
+    Route::get('/surveys/vip-print', [\App\Http\Controllers\GharanaSurveyController::class, 'printVipList'])->name('surveys.vip-print');
+    Route::get('/campaign-workers', [\App\Http\Controllers\GharanaSurveyController::class, 'workersIndex'])->name('campaign-workers.index');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/test-notification', [SettingsController::class, 'sendTestNotification'])->name('settings.notification.test');
